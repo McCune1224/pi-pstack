@@ -58,7 +58,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run typecheck",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "test": "node --experimental-strip-types --test extensions/*.test.ts",
     "check:piisms": "node scripts/check-pi-isms.mjs",
     "sync:upstream": "node scripts/sync-upstream.mjs"
   },

@@ -1,14 +1,18 @@
 import { CONFIG_DIR_NAME, type ExtensionAPI, type ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import {
+  MODE_ENTRY_TYPE,
+  POTETO_DIRECTIVE,
   ROLE_KEYS,
   availableModels,
   buildTier,
+  lastModeEnabled,
   loadSettings,
   parseArgs,
   parseModelId,
   saveSettings,
   settingsPath,
   summaryText,
+  type ModeEntry,
   type ModelMap,
   type ModelSpec,
   type RoleKey,
@@ -269,7 +273,30 @@ async function broHandler(
 }
 
 export default function (pi: ExtensionAPI): void {
+  let potetoMode = false;
+
+  function sessionEntries(ctx: {
+    sessionManager: { getBranch?: () => ModeEntry[]; getEntries: () => ModeEntry[] };
+  }): ModeEntry[] {
+    return typeof ctx.sessionManager.getBranch === "function"
+      ? ctx.sessionManager.getBranch()
+      : ctx.sessionManager.getEntries();
+  }
+
+  function setModeStatus(ctx: import("@earendil-works/pi-coding-agent").ExtensionContext): void {
+    if (ctx.mode !== "tui") return;
+    ctx.ui.setStatus("pstack-mode", potetoMode ? "pstack: poteto mode" : undefined);
+  }
+
+  function persistMode(enabled: boolean, ctx?: import("@earendil-works/pi-coding-agent").ExtensionContext): void {
+    potetoMode = enabled;
+    pi.appendEntry(MODE_ENTRY_TYPE, { enabled });
+    if (ctx) setModeStatus(ctx);
+  }
+
   pi.on("session_start", async (_event, ctx) => {
+    potetoMode = lastModeEnabled(sessionEntries(ctx));
+    setModeStatus(ctx);
     const toolNames = new Set(pi.getAllTools().map((tool) => tool.name));
     const missing = COMPANIONS.filter((companion) => !toolNames.has(companion.tool));
     if (missing.length === 0) return;
@@ -280,12 +307,46 @@ export default function (pi: ExtensionAPI): void {
     ctx.ui.notify(`pi-pstack missing companions. ${lines.join(" | ")}`, "warning");
   });
 
+  pi.on("input", (event, ctx) => {
+    if (/^\/skill:poteto-mode(?:\s|$)/.test(event.text)) {
+      persistMode(true, ctx);
+    }
+    return { action: "continue" as const };
+  });
+
+  pi.on("before_agent_start", (event) => {
+    if (!potetoMode) return;
+    return { systemPrompt: `${event.systemPrompt}\n\n${POTETO_DIRECTIVE}` };
+  });
+
   const setupCommand = {
     description: "Configure pstack subagent models for Pi via TUI pickers (fast paths: -l scope, inherit|light|custom tier, or one role). Writes only the subagents.* keys; default is all-inherit.",
     getArgumentCompletions: completions,
     handler: pstackSetupHandler,
   };
   pi.registerCommand("pstack-setup", setupCommand);
+  pi.registerCommand("poteto-mode", {
+    description: "Enable or disable sticky Poteto Mode. Usage: /poteto-mode [task] | /poteto-mode off",
+    getArgumentCompletions: (prefix: string) => {
+      const token = prefix.trim().toLowerCase();
+      if (!token || "off".startsWith(token)) return [{ value: "off", label: "off" }];
+      return null;
+    },
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
+      const raw = args.trim();
+      const token = raw.split(/\s+/)[0]?.toLowerCase() ?? "";
+      if (token === "off" || token === "disable" || token === "stop") {
+        persistMode(false, ctx);
+        ctx.ui.notify("Poteto Mode off.", "info");
+        return;
+      }
+      persistMode(true, ctx);
+      ctx.ui.notify("Poteto Mode on. Stays on until /poteto-mode off.", "info");
+      const payload = `/skill:poteto-mode${raw ? ` ${raw}` : ""}`;
+      pi.sendUserMessage(payload, ctx.isIdle() ? { expandPromptTemplates: true } : { expandPromptTemplates: true, deliverAs: "followUp" });
+    },
+  });
+
   pi.registerCommand("pstack-status", {
     description: "Show the effective pstack model map (resolved through defaults), the winning settings file, and loaded pstack skills.",
     handler: (_args, ctx) => pstackStatusHandler(pi, _args, ctx),

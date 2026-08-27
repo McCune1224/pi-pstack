@@ -48,6 +48,28 @@ export const ROLE_KEYS: RoleKey[] = [
 
 export const INHERIT_LABEL = "inherit (parent model - cheapest, recommended)";
 
+export interface ModeEntry {
+  type?: string;
+  customType?: string;
+  data?: unknown;
+}
+
+export const MODE_ENTRY_TYPE = "pstack-mode";
+
+export function lastModeEnabled(entries: ModeEntry[]): boolean {
+  let enabled = false;
+  for (const entry of entries) {
+    if (entry.type === "custom" && entry.customType === MODE_ENTRY_TYPE) {
+      const data = entry.data as { enabled?: unknown } | undefined;
+      enabled = Boolean(data?.enabled);
+    }
+  }
+  return enabled;
+}
+
+export const POTETO_DIRECTIVE =
+  "Pstack Poteto Mode is on for this session. Follow the poteto-mode skill: match a playbook, copy its steps in verbatim, delegate through pi-subagents, verify against the real artifact, and cite only the principles that changed a decision. /poteto-mode off disables this mode.";
+
 export interface ParsedArgs {
   scope: Scope | undefined;
   tier?: Tier;
