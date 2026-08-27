@@ -32,7 +32,7 @@ New here? The [guide](docs/guide/README.md) walks through a first task from setu
 | `/bro` | Restates the last assistant reply in plain human language. |
 | `/setup-pstack`, `/pstack-models` | Aliases of `/pstack-setup` for upstream muscle memory. |
 
-No tools or events are registered. Skills carry the workflow; the extension only wires what a skill cannot reach: the model registry, settings files, the session, and the TUI.
+No tools are registered. Skills carry the workflow; the extension only wires what a skill cannot reach: the model registry, settings files, the session, and the TUI. One startup event checks that the companions below are installed and warns with the install command when one is missing.
 
 ## Skills
 
@@ -69,7 +69,21 @@ Pi resolves pstack role models in this order:
 4. `subagents.defaultModel`
 5. Parent session model
 
-`/pstack-setup` writes keys 3 and 4 (and `defaultThinking`, `thinking`, `fallbackModels` where a tier uses them). All roles default to `inherit`, which keeps cost on the parent model. Only set an explicit model when you want a tier.
+With no explicit selection, every role falls back to `inherit`, which follows the parent session model you run Pi with. `/pstack-setup` writes keys 3 and 4 (and `defaultThinking`, `thinking`, `fallbackModels` where a tier uses them). `/pstack-status` shows the parent model and the resolved role mapping, so you always see what `inherit` actually means right now.
+
+Only set an explicit model when you want a tier. The custom tier sets the `default` role for a blanket default, or any specific role for a targeted model.
+
+## Companions
+
+pi-pstack needs no other plugins to load. Three Pi packages back specific surfaces; `subagent`, `todo`, and `ask_user_question` are package tools, not Pi built-ins.
+
+| Package | Why |
+|---|---|
+| `npm:pi-subagents` | Required for the full set. Registers the `subagent` tool, reads this package's `agents/`, and backs every routed skill (`how`, `why`, `architect`, `arena`, `swarm`, `interrogate`, `reflect`). Without it the two agents and the delegation workflows have no backend. |
+| `npm:@juicesharp/rpiv-todo` | Recommended. The playbooks open a todo list through the `todo` tool. |
+| `npm:@juicesharp/rpiv-ask-user-question` | Recommended. Skills reach the user through the `ask_user_question` tool. |
+
+At startup the plugin checks for these and tells you the install command when something is missing.
 
 ## Not shipped
 

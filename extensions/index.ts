@@ -68,6 +68,27 @@ function completions(prefix: string) {
   return filtered.length > 0 ? filtered : null;
 }
 
+const COMPANIONS = [
+  {
+    tool: "subagent",
+    pkg: "npm:pi-subagents",
+    required: true,
+    why: "registers the subagent tool, reads this package's agents/, and backs every routed skill",
+  },
+  {
+    tool: "todo",
+    pkg: "npm:@juicesharp/rpiv-todo",
+    required: false,
+    why: "the playbooks open a todo list through it",
+  },
+  {
+    tool: "ask_user_question",
+    pkg: "npm:@juicesharp/rpiv-ask-user-question",
+    required: false,
+    why: "the skills name it when a decision needs the user",
+  },
+];
+
 function pstackSkillNames(commands: Array<{ name: string; source: string }>): string[] {
   return commands
     .filter((command) => command.source === "skill")
@@ -193,10 +214,15 @@ async function pstackStatusHandler(
   const text =
     summaryText(effective, scope, pstackSkillNames(pi.getCommands())) +
     `\nsettings: ${projectWins ? projectPath : userPath}`;
+  const parent =
+    ctx.model && typeof ctx.model === "object"
+      ? `${(ctx.model as { provider?: string }).provider}/${(ctx.model as { id?: string }).id}`
+      : "unknown";
+  const full = `parent session model: ${parent}\n${text}`;
   if (ctx.hasUI) {
-    ctx.ui.notify(text, "info");
+    ctx.ui.notify(full, "info");
   } else {
-    console.log(text);
+    console.log(full);
   }
 }
 
@@ -243,6 +269,17 @@ async function broHandler(
 }
 
 export default function (pi: ExtensionAPI): void {
+  pi.on("session_start", async (_event, ctx) => {
+    const toolNames = new Set(pi.getAllTools().map((tool) => tool.name));
+    const missing = COMPANIONS.filter((companion) => !toolNames.has(companion.tool));
+    if (missing.length === 0) return;
+    const lines = missing.map(
+      (companion) =>
+        `${companion.required ? "required" : "recommended"}: ${companion.pkg} (provides ${companion.tool}; ${companion.why})`,
+    );
+    ctx.ui.notify(`pi-pstack missing companions. ${lines.join(" | ")}`, "warning");
+  });
+
   const setupCommand = {
     description: "Configure pstack subagent models for Pi via TUI pickers (fast paths: -l scope, inherit|light|custom tier, or one role). Writes only the subagents.* keys; default is all-inherit.",
     getArgumentCompletions: completions,
