@@ -99,7 +99,7 @@ Pi has no automation runtime. If you ever run under one, fetch both from upstrea
 
 ## Maintenance
 
-`scripts/sync-upstream.sh` re-vendors the upstream tree and then scans for Cursor-only references (`~/.cursor`, `AskQuestion`, `subagent_type`, `grok-4.6` and friends, `/add-plugin`) so a re-adapted state is a diff you review, and nothing Cursor-shaped ships to Pi. Run it after each upstream pstack release.
+`npm run sync:upstream` re-vendors the upstream tree and then scans for Cursor-only references (`~/.cursor`, `AskQuestion`, `subagent_type`, `grok-4.6` and friends, `/add-plugin`) so a re-adapted state is a diff you review, and nothing Cursor-shaped ships to Pi. Run it after each upstream pstack release. Both tools are plain Node scripts, so they run on any machine that runs Pi.
 
 ## Troubleshooting
 
@@ -116,7 +116,7 @@ Pi has no automation runtime. If you ever run under one, fetch both from upstrea
 ```bash
 npm ci
 npm run typecheck          # strict tsc over extensions/
-./scripts/check-pi-isms.sh  # fail before Cursor-shaped content ships
+npm run check:piisms      # exit 1 if Cursor-shaped content ships
 ```
 
 Verify against a real Pi surface before releasing: `pi -e . -p "Say ok"` must load clean, and `/pstack-status` in a TUI session must show the 48 skills and the resolved model map.

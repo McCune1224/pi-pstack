@@ -58,7 +58,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run typecheck"
+    "prepublishOnly": "npm run typecheck",
+    "check:piisms": "node scripts/check-pi-isms.mjs",
+    "sync:upstream": "node scripts/sync-upstream.mjs"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "*",
