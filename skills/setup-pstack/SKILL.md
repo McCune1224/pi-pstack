@@ -1,65 +1,92 @@
 ---
 name: setup-pstack
-description: Configure which models pstack uses per role. Detects your available models and writes an always-applied rule that overrides the skill defaults. Use for /setup-pstack, "configure pstack models", or changing pstack's model choices.
+description: Configure which models pstack uses per role for Pi. Detects your available Pi models and writes Pi settings that override skill defaults. Use for /setup-pstack, "configure pstack models", or changing pstack's model choices.
 ---
 
-# Setup pstack
+# Setup pstack (Pi)
 
-Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack's model per role. The skills read it and fall back to their inline defaults when a line is absent, so this is an override layer, not a requirement.
+Pi does not use Cursor's `~/.cursor/rules/pstack-models.mdc`. This skill writes Pi's native model config instead, so delegated agents stay on cheap models you already have.
+
+## Pi model config path
+
+Pi resolves models in this order:
+1. Per-run `subagent({model:"..."})` override
+2. Agent frontmatter `model:`
+3. `~/.pi/agent/settings.json` -> `subagents.agentOverrides.<name>.model`
+4. `subagents.defaultModel`
+5. Parent session `defaultModel` (`opencode-go/hy3` for you)
+
+All pstack roles default to `inherit` (parent model). That keeps cost on `hy3`. Only set an explicit model when you want a tier.
+
+Pi has these config scopes:
+- User: `~/.pi/agent/settings.json` -> `subagents.*`
+- Project: `.pi/settings.json` -> `subagents.*` (project wins)
 
 ## Steps
 
 ### 1. Detect available models
 
-Enumerate the model slugs you can pass to a `Task` subagent in this session; that is the dependable source. If Cursor also exposes a models API or CLI that lists the user's entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.
+Source is `pi --list-models` / `ctx.modelRegistry`. For this host the cheap pool is `opencode-go/hy3`, `opencode-go/deepseek-v4-flash`, `opencode-go/inherit`, `opencode-go/gpt-5.6-luna`, plus `openrouter/*` and `openai-codex/*` if you want to burn subs. Prefer AskQuestion with detected slugs + `inherit`.
+
+If you cannot detect, ask user to paste slugs. Never write a slug you have not confirmed via registry. `inherit` (alias `auto` / `inherit-parent`) is always valid and means run on parent model.
 
 ### 2. Load current state
 
-The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.cursor/rules/pstack-models.mdc` already exists, read it and treat its values as the current choices. Otherwise start from those defaults.
+Read `~/.pi/agent/settings.json` and `.pi/settings.json` if present. Extract `subagents.defaultModel`, `subagents.agentOverrides`, `subagents.defaultThinking`. If absent, treat as `inherit`. Also read any existing `~/.cursor/rules/pstack-models.mdc` only to migrate, then ignore it.
 
-### 3. Map and confirm
+### 3. Map and confirm (TUI)
 
-Show every role with its current model, marking any real slug not in the detected set as needing a choice. Ask whether to accept as-is or change specific roles, offering the detected models plus `inherit-parent` and `auto` (both mean: this role runs on the parent chat model, which is how Auto users stay on Auto) as the options. Prefer AskQuestion over free text. For panel roles (how critics, arena runners, architect runners, interrogate reviewers) the value is a list, and one subagent runs per entry, alias entries included, so the list length sets the count. `arena cross-judge pool` is also a list, but Arena selects one value from it whose model family differs from the parent's when possible. `swarm workers` is the default model for every worker unless a race or comparison assigns another model per arm.
+Show every pstack role mapped to Pi agent names:
+
+| pstack role | Pi agent/override key |
+|---|---|
+| feature, refactoring, bug-fix, perf, hillclimb | `worker` |
+| how explorer, why investigators, swarm workers | `scout` |
+| how explainer, why synthesizer, judgment/prose, hardest | `oracle` |
+| how critics, arena runners/cross-judge, architect runners, interrogate reviewers | `reviewer` (fan-out) + `oracle` |
+
+Instead of 15 separate lines, Pi condenses to 4-5 overrides. Offer detected models + `inherit` as options via `ctx.ui.select` / `ask_user_question`. For panel roles (critics/runners) the value is a list - in Pi that means multiple `subagent` calls; keep list length small to limit cost.
+
+Prefer `inherit` for cost. The extension `/pstack-setup` command does this via a TUI picker.
 
 ### 4. Validate
 
-Every real slug written must be in the detected set; `inherit-parent` and `auto` always pass. If a chosen real slug is not available, stop and ask again. A rule pointing at a model the user cannot use breaks every delegation that reads it.
+Every real slug must be in registry. `inherit` always passes. If not available, ask again. A bad slug breaks delegation.
 
 ### 5. Write the rule
 
-Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true` and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
+Write Pi settings, not Cursor rules. Update `~/.pi/agent/settings.json` (or `.pi/settings.json` with `-l` flag):
 
+```json
+{
+  "subagents": {
+    "defaultModel": "opencode-go/hy3",
+    "defaultThinking": "high",
+    "agentOverrides": {
+      "scout": {"model": "inherit", "thinking": "low"},
+      "worker": {"model": "inherit"},
+      "reviewer": {"model": "inherit"},
+      "oracle": {"model": "inherit", "fallbackModels": ["opencode-go/deepseek-v4-flash"]}
+    }
+  }
+}
 ```
----
-description: pstack per-role model choices (overrides skill defaults)
-alwaysApply: true
----
-# pstack model configuration. One line per role. Delete a line to fall back to the skill default.
-# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
-feature, refactoring: grok-4.6-fast-xhigh
-bug-fix: gpt-5.6-sol-max
-perf-issue: gpt-5.6-sol-max
-hillclimb: gpt-5.6-sol-max
-judgment and prose: claude-fable-5-thinking-max
-hardest tasks: claude-fable-5-thinking-max
-how explorer: grok-4.6-fast-xhigh
-how explainer: claude-fable-5-thinking-max
-how critics: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-why investigators: grok-4.6-fast-xhigh
-why synthesizer: claude-fable-5-thinking-max
-reflect tooling: gpt-5.6-sol-max
-reflect judgment, divergent, synthesizer: claude-fable-5-thinking-max
-arena runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-arena cross-judge pool: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-swarm workers: grok-4.6-fast-xhigh
-architect runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-interrogate reviewers: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-```
+
+Do NOT write `~/.cursor/rules/pstack-models.mdc`. For backwards compat you may write a stub that comments "Pi uses settings.json, this file ignored".
+
+For explicit tier (cheapest -> still cheap):
+- `scout`: `opencode-go/hy3` low
+- `worker`/`reviewer`: `inherit`
+- `oracle`: `opencode-go/deepseek-v4-flash` or `inherit` + fallback
 
 ### 6. Confirm
 
-Tell the user the rule was written and that it applies to new sessions. Re-running this skill updates it.
+Tell user settings were written and require `/reload` or restart to apply. Mention `pi-subagents` picks up overrides after reload. Run `/subagents-models` to verify live mapping. Re-running this skill updates it.
 
-### 7. Offer a verification skill (optional)
+### 7. Offer verification skill (optional)
 
-Check whether the project has a way to drive the real app for proof (a `verify-*` skill, or an existing harness). If not, offer once: "want a project-local verification skill, so agents can drive the app the way a user does and prove changes work? I can generate one with /create-verification-skill." On yes, invoke `/create-verification-skill` (resolves wherever pstack is installed — workspace, user, or plugin). On no, move on without pushing.
+Same as upstream: if project lacks a `verify-*` skill, offer `/create-verification-skill` once.
+
+## Also available as slash command
+
+Run `/pstack-setup` in Pi TUI. It does steps 1-6 via interactive pickers without loading this skill text. This SKILL.md is the manual fallback.
