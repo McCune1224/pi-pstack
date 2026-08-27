@@ -2,14 +2,18 @@
 
 pstack for Pi. Poteto's rigorous engineering workflow as a Pi plugin. Write less code, write better code, and parallelize with confidence.
 
-This package ships everything the upstream [pstack](https://github.com/cursor/plugins/tree/main/pstack) plugin (0.14.4) bundles, adapted to Pi: the skills, the subagents, the guide, and the dormant benny automation pack. It also fills the upstream README's "not shipped here" list, so you do not need cursor-team-kit.
+This package ships everything the upstream [pstack](https://github.com/cursor/plugins/tree/main/pstack) plugin (0.14.4) bundles, adapted to Pi: the skills, the subagents, and the guide. It also fills the upstream README's "not shipped here" list, so you do not need cursor-team-kit. Two upstream pieces bound to Cursor's own runtime are excluded; "Not shipped" below lists them.
 
 ## Install
 
+Requires Pi 0.84 or newer. Install `npm:pi-subagents` alongside for the agents and routed skills; the plugin warns at startup when a companion is missing.
+
 ```bash
-pi install /path/to/pi-pstack
-# or, after publishing:
-# pi install git:github.com/<you>/pi-pstack
+pi install npm:pi-pstack                     # once published to npm
+# or
+pi install git:github.com/McCune1224/pi-pstack   # from the repository
+# or, from a local checkout:
+# pi install /path/to/pi-pstack
 ```
 
 Then run `/reload`.
@@ -28,9 +32,8 @@ New here? The [guide](docs/guide/README.md) walks through a first task from setu
 | Command | What it does |
 |---|---|
 | `/pstack-setup` | Model configuration wizard. Picks the target scope, applies tiers, or assigns a model per pstack role. Writes only the `subagents.*` keys in Pi settings. Fast paths: `/pstack-setup -l` (project scope), `/pstack-setup inherit` or `light` or `custom` (skip the tier picker), `/pstack-setup scout` (switch one role). |
-| `/pstack-status` | One screen: effective model per role, which settings file wins, and which pstack skills are loaded. |
+| `/pstack-status` | One screen: parent session model, effective model per role, which settings file wins, and which pstack skills are loaded. |
 | `/bro` | Restates the last assistant reply in plain human language. |
-| `/setup-pstack`, `/pstack-models` | Aliases of `/pstack-setup` for upstream muscle memory. |
 
 No tools are registered. Skills carry the workflow; the extension only wires what a skill cannot reach: the model registry, settings files, the session, and the TUI. One startup event checks that the companions below are installed and warns with the install command when one is missing.
 
@@ -97,6 +100,26 @@ Pi has no automation runtime. If you ever run under one, fetch both from upstrea
 ## Maintenance
 
 `scripts/sync-upstream.sh` re-vendors the upstream tree and then scans for Cursor-only references (`~/.cursor`, `AskQuestion`, `subagent_type`, `grok-4.6` and friends, `/add-plugin`) so a re-adapted state is a diff you review, and nothing Cursor-shaped ships to Pi. Run it after each upstream pstack release.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Skills do not appear | Run `/reload` after install. `/pstack-status` lists the loaded pstack skills and should show 48. |
+| Model changes do not apply | `/pstack-setup` writes settings; `/reload` applies them. `/pstack-status` shows what resolved. |
+| Startup warning about a missing companion | `pi install <package>` for each name in the warning, then `/reload`. |
+| `/poteto-mode` does not engage | Run `/skill:poteto-mode <task>` directly. A user-scope skill with the same name shadows the package one; remove it from `~/.pi/agent/skills/`. |
+| Everything broke after an upgrade | The package is a git repo; `git log` shows each release. Reinstall with `pi install git:github.com/McCune1224/pi-pstack@<tag>` to pin a version. |
+
+## Development
+
+```bash
+npm ci
+npm run typecheck          # strict tsc over extensions/
+./scripts/check-pi-isms.sh  # fail before Cursor-shaped content ships
+```
+
+Verify against a real Pi surface before releasing: `pi -e . -p "Say ok"` must load clean, and `/pstack-status` in a TUI session must show the 48 skills and the resolved model map.
 
 ## License
 

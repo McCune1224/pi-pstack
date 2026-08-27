@@ -286,8 +286,6 @@ export default function (pi: ExtensionAPI): void {
     handler: pstackSetupHandler,
   };
   pi.registerCommand("pstack-setup", setupCommand);
-  pi.registerCommand("setup-pstack", { ...setupCommand, description: "Alias of /pstack-setup" });
-  pi.registerCommand("pstack-models", { ...setupCommand, description: "Alias of /pstack-setup" });
   pi.registerCommand("pstack-status", {
     description: "Show the effective pstack model map (resolved through defaults), the winning settings file, and loaded pstack skills.",
     handler: (_args, ctx) => pstackStatusHandler(pi, _args, ctx),

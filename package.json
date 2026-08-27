@@ -4,6 +4,14 @@
   "description": "pstack for Pi. Poteto's rigorous engineering workflow as a Pi plugin: skills, subagents, and commands for write-less-higher-quality code with fearless parallelism.",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/McCune1224/pi-pstack"
+  },
+  "homepage": "https://github.com/McCune1224/pi-pstack",
+  "bugs": {
+    "url": "https://github.com/McCune1224/pi-pstack/issues"
+  },
   "keywords": [
     "pi-package",
     "pi",
@@ -42,8 +50,15 @@
     "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-ai": { "optional": true },
+    "@earendil-works/pi-coding-agent": { "optional": true },
+    "@earendil-works/pi-tui": { "optional": true },
+    "typebox": { "optional": true }
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "*",

@@ -1,6 +1,6 @@
 ---
 name: setup-pstack
-description: Configure which models pstack uses per role for Pi. Detects your available Pi models and writes Pi settings that override skill defaults. Use for /setup-pstack, "configure pstack models", or changing pstack's model choices.
+description: Configure which models pstack uses per role for Pi. Detects your available Pi models and writes Pi settings that override skill defaults. Manual fallback for the /pstack-setup command; use it when the extension picker is unavailable.
 ---
 
 # Setup pstack (Pi)

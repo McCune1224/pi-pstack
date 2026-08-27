@@ -17,18 +17,18 @@ Then run `/reload`. Pi registers the skills, agents, and commands. If the packag
 Run:
 
 ```text
-/setup-pstack
+/pstack-setup
 ```
 
-[`/setup-pstack`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes the `subagents.*` keys in Pi settings, the same source every pstack skill reads.
+[`/pstack-setup`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes the `subagents.*` keys in Pi settings, the same source every pstack skill reads.
 
-You only override what you care about. A role with no override keeps the `inherit` default (the parent model). To restore the default later, run `/setup-pstack` again, or clear the override in `~/.pi/agent/settings.json`.
+You only override what you care about. A role with no override keeps the `inherit` default (the parent model). To restore the default later, run `/pstack-setup` again, or clear the override in `~/.pi/agent/settings.json`.
 
-Set a role to `inherit` and pstack omits the subagent `model` field, so the subagent runs on your parent chat model. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures the default model for every `/swarm` worker unless a race names a model for each arm. `/setup-pstack -l` writes the project copy at `.pi/settings.json` for a team-shared mapping.
+Set a role to `inherit` and pstack omits the subagent `model` field, so the subagent runs on your parent chat model. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures the default model for every `/swarm` worker unless a race names a model for each arm. `.pi/settings.json` for a team-shared mapping.
 
 ## Accept the verification offer, or don't
 
-At the end of setup, `/setup-pstack` looks for a way to prove app behavior in your project, either a `verify-*` skill or an existing harness. If it finds neither, it offers once to generate one with [`/create-verification-skill`](../../skills/create-verification-skill/SKILL.md).
+At the end of setup, `/pstack-setup` looks for a way to prove app behavior in your project, either a `verify-*` skill or an existing harness. If it finds neither, it offers once to generate one with [`/create-verification-skill`](../../skills/create-verification-skill/SKILL.md).
 
 Say yes and it writes `.pi/skills/verify-<app>/`, a project-local skill that teaches agents to drive your app the way a user does. It proves the skill works once before handing it over. Say no and setup moves on. You can run `/create-verification-skill` yourself any time. [Verify and ship](./06-verify-and-ship.md#create-a-project-verification-skill) covers when it earns its place.
 
