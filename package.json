@@ -1,7 +1,7 @@
 {
-  "name": "pi-pstack",
+  "name": "@mccune1224/pi-pstack",
   "version": "0.1.0",
-  "description": "pstack for Pi. Poteto's rigorous engineering workflow as a Pi plugin: skills, subagents, and commands for write-less-higher-quality code with fearless parallelism.",
+  "description": "pstack for Pi. Poteto's rigorous engineering workflow adapted from the pstack plugin into a Pi plugin: skills, subagents, and commands for write-less-higher-quality code with fearless parallelism.",
   "license": "MIT",
   "type": "module",
   "repository": {

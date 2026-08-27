@@ -9,7 +9,7 @@ This package ships everything the upstream [pstack](https://github.com/cursor/pl
 Requires Pi 0.84 or newer. Install `npm:pi-subagents` alongside for the agents and routed skills; the plugin warns at startup when a companion is missing.
 
 ```bash
-pi install npm:pi-pstack                     # once published to npm
+pi install npm:@mccune1224/pi-pstack        # once published to npm
 # or
 pi install git:github.com/McCune1224/pi-pstack   # from the repository
 # or, from a local checkout:
@@ -123,4 +123,4 @@ Verify against a real Pi surface before releasing: `pi -e . -p "Say ok"` must lo
 
 ## License
 
-MIT. Upstream copyright held by Lauren Tan; this package adapts and extends it for Pi.
+MIT. The skillset is adapted from poteto's [pstack](https://github.com/cursor/plugins/tree/main/pstack) (MIT, Lauren Tan); this package ports and extends it for Pi.
