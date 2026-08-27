@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://github.com/McCune1224/pi-pstack"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://github.com/McCune1224/pi-pstack",
   "bugs": {
     "url": "https://github.com/McCune1224/pi-pstack/issues"
