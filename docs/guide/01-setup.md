@@ -4,13 +4,13 @@ In this page you install the plugin, pick which models pstack uses, and run your
 
 ## Install the plugin
 
-In a Cursor chat, run:
+In a Pi chat, install the package:
 
-```text
-/add-plugin pstack
+```bash
+pi install /path/to/pi-pstack
 ```
 
-Cursor confirms the plugin is installed.
+Then run `/reload`. Pi registers the skills, agents, and commands. If the package is published, `pi install git:github.com/<you>/pi-pstack` works the same way.
 
 ## Pick your models
 
@@ -20,19 +20,19 @@ Run:
 /setup-pstack
 ```
 
-[`/setup-pstack`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes `~/.cursor/rules/pstack-models.mdc`, a small rule every pstack skill reads.
+[`/setup-pstack`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes the `subagents.*` keys in Pi settings, the same source every pstack skill reads.
 
-You only override what you care about. A role with no line in the rule keeps the skill's default. To restore a default later, delete that role's line, or just run `/setup-pstack` again.
+You only override what you care about. A role with no override keeps the `inherit` default (the parent model). To restore the default later, run `/setup-pstack` again, or clear the override in `~/.pi/agent/settings.json`.
 
-You might be wondering what happens if you use Auto. Set a role to `inherit-parent` or `auto` and pstack omits the subagent `model` field, so the subagent inherits your parent chat model. Both values mean the same thing, and neither is a model slug. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures `swarm workers`, the default model for every `/swarm` worker unless a race names a model for each arm.
+Set a role to `inherit` and pstack omits the subagent `model` field, so the subagent runs on your parent chat model. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures the default model for every `/swarm` worker unless a race names a model for each arm. `/setup-pstack -l` writes the project copy at `.pi/settings.json` for a team-shared mapping.
 
 ## Accept the verification offer, or don't
 
 At the end of setup, `/setup-pstack` looks for a way to prove app behavior in your project, either a `verify-*` skill or an existing harness. If it finds neither, it offers once to generate one with [`/create-verification-skill`](../../skills/create-verification-skill/SKILL.md).
 
-Say yes and it writes `.cursor/skills/verify-<app>/`, a project-local skill that teaches agents to drive your app the way a user does. It proves the skill works once before handing it over. Say no and setup moves on. You can run `/create-verification-skill` yourself any time. [Verify and ship](./06-verify-and-ship.md#create-a-project-verification-skill) covers when it earns its place.
+Say yes and it writes `.pi/skills/verify-<app>/`, a project-local skill that teaches agents to drive your app the way a user does. It proves the skill works once before handing it over. Say no and setup moves on. You can run `/create-verification-skill` yourself any time. [Verify and ship](./06-verify-and-ship.md#create-a-project-verification-skill) covers when it earns its place.
 
-After setup, start a new chat. The model rule applies to new sessions.
+After setup, run `/reload`. The model mapping applies from the next turn.
 
 ## Run your first task
 

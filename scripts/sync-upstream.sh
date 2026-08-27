@@ -10,12 +10,15 @@ if [ ! -d "$UPSTREAM/skills" ]; then
   exit 1
 fi
 
-for d in skills agents docs automations; do
+for d in skills agents docs; do
   rm -rf "$ROOT/$d"
   cp -r "$UPSTREAM/$d" "$ROOT/$d"
 done
 cp "$UPSTREAM/LICENSE" "$ROOT/LICENSE"
-cp "$UPSTREAM/README.md" "$ROOT/README.upstream.md"
+
+# Exclude pieces bound to Cursor's runtime: grokbot's webhook panels and the
+# benny automation pack cannot work on Pi.
+rm -rf "$ROOT/skills/grokbot" "$ROOT/automations"
 
 echo "vendored from $UPSTREAM"
 "$ROOT/scripts/check-pi-isms.sh" "$ROOT"

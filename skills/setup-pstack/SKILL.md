@@ -5,7 +5,7 @@ description: Configure which models pstack uses per role for Pi. Detects your av
 
 # Setup pstack (Pi)
 
-Pi does not use Cursor's `~/.cursor/rules/pstack-models.mdc`. This skill writes Pi's native model config instead, so delegated agents stay on cheap models you already have.
+This skill writes Pi's native model config, so delegated agents stay on cheap models you already have.
 
 ## Pi model config path
 
@@ -32,7 +32,7 @@ If you cannot detect, ask user to paste slugs. Never write a slug you have not c
 
 ### 2. Load current state
 
-Read `~/.pi/agent/settings.json` and `.pi/settings.json` if present. Extract `subagents.defaultModel`, `subagents.agentOverrides`, `subagents.defaultThinking`. If absent, treat as `inherit`. Also read any existing `~/.cursor/rules/pstack-models.mdc` only to migrate, then ignore it.
+Read `~/.pi/agent/settings.json` and `.pi/settings.json` if present. Extract `subagents.defaultModel`, `subagents.agentOverrides`, `subagents.defaultThinking`. If absent, treat as `inherit`.
 
 ### 3. Map and confirm (TUI)
 
@@ -72,7 +72,7 @@ Write Pi settings, not Cursor rules. Update `~/.pi/agent/settings.json` (or `.pi
 }
 ```
 
-Do NOT write `~/.cursor/rules/pstack-models.mdc`. For backwards compat you may write a stub that comments "Pi uses settings.json, this file ignored".
+
 
 For explicit tier (cheapest -> still cheap):
 - `scout`: `opencode-go/hy3` low

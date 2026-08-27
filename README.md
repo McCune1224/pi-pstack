@@ -36,7 +36,7 @@ No tools or events are registered. Skills carry the workflow; the extension only
 
 ## Skills
 
-All 45 upstream skills ship, including `/poteto-mode` and its 22 playbooks, the workflow skills (`how`, `why`, `architect`, `arena`, `swarm`, `interrogate`, `reflect`, `tdd`, `unslop`, `bro`, `technical-writing`, and more), the 21 first-principle skills, and `grokbot/make-bot-ui`. Every skill is Pi-native: model defaults are `inherit`, subagents use Pi agents (`scout`, `worker`, `reviewer`, `oracle`, `poteto-agent`), and config reads Pi settings.
+All 44 Pi-compatible upstream skills ship, plus the four gap skills in the next section. The full set includes `/poteto-mode` and its 22 playbooks, the workflow skills (`how`, `why`, `architect`, `arena`, `swarm`, `interrogate`, `reflect`, `tdd`, `unslop`, `bro`, `technical-writing`, and more), and the 21 first-principle skills. Every skill is Pi-native: model defaults are `inherit`, subagents use Pi agents (`scout`, `worker`, `reviewer`, `oracle`, `poteto-agent`), and config reads Pi settings.
 
 ## Not shipped here, now shipped
 
@@ -71,13 +71,18 @@ Pi resolves pstack role models in this order:
 
 `/pstack-setup` writes keys 3 and 4 (and `defaultThinking`, `thinking`, `fallbackModels` where a tier uses them). All roles default to `inherit`, which keeps cost on the parent model. Only set an explicit model when you want a tier.
 
-## Automations
+## Not shipped
 
-The dormant [benny pack](automations/benny/) ships unregistered, exactly as upstream keeps it. It is not exposed as slash skills. Point Pi at `automations/benny/FOR_AGENTS.md` to set it up in a repository.
+Two upstream pieces are excluded because they are bound to Cursor's runtime and cannot work on Pi:
+
+- `grokbot/make-bot-ui` drives Cursor's automation webhook panels.
+- The dormant `benny` automation pack registers through `.cursor/settings.json` and Cursor automations.
+
+Pi has no automation runtime. If you ever run under one, fetch both from upstream.
 
 ## Maintenance
 
-`scripts/sync-upstream.sh` re-vendors the upstream tree and then scans for Cursor-only references (`~/.cursor`, `AskQuestion`, `subagent_type`, `grok-4.6` and friends, `.mdc` paths) so a re-adapted state is a diff you review, not a silent drift. Run it after each upstream pstack release.
+`scripts/sync-upstream.sh` re-vendors the upstream tree and then scans for Cursor-only references (`~/.cursor`, `AskQuestion`, `subagent_type`, `grok-4.6` and friends, `/add-plugin`) so a re-adapted state is a diff you review, and nothing Cursor-shaped ships to Pi. Run it after each upstream pstack release.
 
 ## License
 
