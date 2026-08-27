@@ -1,0 +1,57 @@
+{
+  "name": "pi-pstack",
+  "version": "0.1.0",
+  "description": "pstack for Pi. Poteto's rigorous engineering workflow as a Pi plugin: skills, subagents, and commands for write-less-higher-quality code with fearless parallelism.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pstack",
+    "poteto-mode",
+    "workflow",
+    "principles",
+    "subagents",
+    "unslop",
+    "agent-style"
+  ],
+  "files": [
+    "skills/",
+    "agents/",
+    "automations/",
+    "docs/",
+    "extensions/",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "subagents": {
+      "agents": [
+        "./agents"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "@types/node": "^22.0.0",
+    "typebox": "*",
+    "typescript": "^5.9.0"
+  }
+}
