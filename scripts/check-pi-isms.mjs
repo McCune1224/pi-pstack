@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const root = process.argv[2] ? resolve(process.argv[2]) : process.cwd();
 
@@ -63,6 +63,7 @@ const action = [];
 const documented = [];
 const skipped = [];
 const emDashes = [];
+const brokenLinks = [];
 
 for (const base of ["skills", "agents", "docs"]) {
   const dir = join(root, base);
@@ -70,7 +71,16 @@ for (const base of ["skills", "agents", "docs"]) {
   for (const file of walk(dir)) {
     if (!/\.(md|ts|sh|mjs|js)$/.test(file)) continue;
     const rel = file.replace(`${root}/`, "");
-    readFileSync(file, "utf8").split("\n").forEach((line, index) => {
+    const source = readFileSync(file, "utf8");
+    if (file.endsWith(".md")) {
+      for (const match of source.matchAll(/\]\(([^)\s]+)\)/g)) {
+        const target = match[1].split("#")[0];
+        if (!target || /^[a-z][a-z0-9+.-]*:/i.test(target) || allowed(rel)) continue;
+        if (!/[./]/.test(target)) continue;
+        if (!existsSync(resolve(dirname(file), target))) brokenLinks.push({ file: rel, line: 0, text: target });
+      }
+    }
+    source.split("\n").forEach((line, index) => {
       if (/\u2014/.test(line) && !allowed(rel)) {
         emDashes.push({ file: rel, line: index + 1, text: line.trim().slice(0, 150) });
       }
@@ -86,10 +96,11 @@ for (const base of ["skills", "agents", "docs"]) {
 for (const hit of action) console.log(`ACTION ${hit.file}:${hit.line}: ${hit.text}`);
 for (const hit of skipped) console.log(`allowed ${hit.file}:${hit.line}: ${hit.text}`);
 for (const hit of emDashes) console.log(`EM-DASH ${hit.file}:${hit.line}: ${hit.text}`);
+for (const hit of brokenLinks) console.log(`LINK ${hit.file}: ${hit.text}`);
 
-console.log(`\n${action.length} Cursor-coupling, ${emDashes.length} long-dash character, ${documented.length} documented as a Pi note, ${skipped.length} allowlisted.`);
-if (action.length === 0 && emDashes.length === 0) {
-  console.log("clean: no unexplained Cursor coupling and no long-dash characters.");
+console.log(`\n${action.length} Cursor-coupling, ${emDashes.length} long-dash character, ${brokenLinks.length} broken relative link, ${documented.length} documented as a Pi note, ${skipped.length} allowlisted.`);
+if (action.length === 0 && emDashes.length === 0 && brokenLinks.length === 0) {
+  console.log("clean: no unexplained Cursor coupling, no long-dash characters, and every relative link resolves.");
   process.exit(0);
 }
 process.exit(1);

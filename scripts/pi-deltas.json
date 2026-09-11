@@ -685,9 +685,10 @@
       "kind": "substitute",
       "id": "pi-command-setup",
       "path": "**/*.md",
-      "find": "/setup-pstack",
+      "regex": true,
+      "find": "(?<![A-Za-z0-9_/-])/setup-pstack",
       "replace": "/pstack-setup",
-      "reason": "The extension registers the command as /pstack-setup, which is what Pi's command list shows."
+      "reason": "The extension registers the command as /pstack-setup, which is what Pi's command list shows. The lookbehind keeps the rule off link targets, because skills/setup-pstack/SKILL.md contains the same substring and rewriting it breaks every link to that skill."
     },
     {
       "kind": "exclude",
