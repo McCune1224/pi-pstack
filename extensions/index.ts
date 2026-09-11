@@ -1,4 +1,11 @@
-import { CONFIG_DIR_NAME, type ExtensionAPI, type ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { join } from "node:path";
+import {
+  CONFIG_DIR_NAME,
+  type ExtensionAPI,
+  type ExtensionCommandContext,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+import { analyzeSkillBudget, readSkillSources } from "./skill-budget.ts";
 import {
   MODE_ENTRY_TYPE,
   POTETO_DIRECTIVE,
@@ -9,6 +16,7 @@ import {
   loadSettings,
   parseArgs,
   parseModelId,
+  resolvedMapping,
   saveSettings,
   settingsPath,
   summaryText,
@@ -18,6 +26,8 @@ import {
   type RoleKey,
   type Scope,
 } from "./settings.ts";
+
+const SKILLS_DIR = join(import.meta.dirname, "..", "skills");
 
 const SETUP_COMPLETIONS = [
   "-l",
@@ -101,6 +111,21 @@ function pstackSkillNames(commands: Array<{ name: string; source: string }>): st
     .sort();
 }
 
+function effectiveModelMap(cwd: string): { map: ModelMap; scope: Scope | "none"; path: string } {
+  const userPath = settingsPath(cwd, "user", CONFIG_DIR_NAME);
+  const projectPath = settingsPath(cwd, "project", CONFIG_DIR_NAME);
+  const projectMap = loadSettings(projectPath);
+  if (Object.keys(projectMap).length > 0) {
+    return { map: projectMap, scope: "project", path: projectPath };
+  }
+  const userMap = loadSettings(userPath);
+  return {
+    map: userMap,
+    scope: Object.keys(userMap).length > 0 ? "user" : "none",
+    path: userPath,
+  };
+}
+
 function modelChoices(ctx: ExtensionCommandContext, currentValue: string) {
   return availableModels(ctx.modelRegistry.getAvailable()).map((choice) =>
     choice.id === currentValue ? `${choice.label}  [current]` : choice.label,
@@ -124,16 +149,17 @@ async function announceAndReload(
 
 async function pstackSetupHandler(args: string, ctx: ExtensionCommandContext): Promise<void> {
   const parsed = parseArgs(args);
-  const scopePick =
-    parsed.scope ??
-    (ctx.hasUI
+  let scope: Scope | undefined = parsed.scope;
+  if (!scope) {
+    const label = ctx.hasUI
       ? await ctx.ui.select("Where to save the pstack model map?", [
           "User (~/.pi/agent/settings.json) - recommended",
           "Project (.pi/settings.json) - team shared",
         ])
-      : "user");
-  if (!scopePick) return;
-  const scope: Scope = scopePick.startsWith("Project") ? "project" : "user";
+      : "user";
+    if (!label) return;
+    scope = label.startsWith("Project") ? "project" : "user";
+  }
   const path = settingsPath(ctx.cwd, scope, CONFIG_DIR_NAME);
   const current = loadSettings(path);
 
@@ -167,7 +193,7 @@ async function pstackSetupHandler(args: string, ctx: ExtensionCommandContext): P
     ctx.ui.notify(summaryText(current, "none", []), "info");
     const pick = await ctx.ui.select("Pick a tier", [
       "All inherit (cheapest) - every role uses the parent model (Recommended)",
-      "Light tier (scout low, oracle fallback, agents high thinking)",
+      "Light tier (scout low thinking, every model still inherits the parent)",
       "Custom per role",
     ]);
     if (!pick) return;
@@ -208,16 +234,13 @@ async function pstackStatusHandler(
   _args: string,
   ctx: ExtensionCommandContext,
 ): Promise<void> {
-  const userPath = settingsPath(ctx.cwd, "user", CONFIG_DIR_NAME);
-  const projectPath = settingsPath(ctx.cwd, "project", CONFIG_DIR_NAME);
-  const userMap = loadSettings(userPath);
-  const projectMap = loadSettings(projectPath);
-  const projectWins = Object.keys(projectMap).length > 0;
-  const effective = projectWins ? projectMap : userMap;
-  const scope = projectWins ? "project" : Object.keys(userMap).length > 0 ? "user" : "none";
+  const effective = effectiveModelMap(ctx.cwd);
+  const budget = analyzeSkillBudget(readSkillSources(SKILLS_DIR));
   const text =
-    summaryText(effective, scope, pstackSkillNames(pi.getCommands())) +
-    `\nsettings: ${projectWins ? projectPath : userPath}`;
+    summaryText(effective.map, effective.scope, pstackSkillNames(pi.getCommands())) +
+    `\nsettings: ${effective.path}` +
+    `\nprompt cost: ${budget.modelInvocable} of ${budget.total} pstack skills exposed to the model,` +
+    ` ${budget.filtered} filtered by disable-model-invocation, ~${budget.estimatedTokens} tokens`;
   const parent =
     ctx.model && typeof ctx.model === "object"
       ? `${(ctx.model as { provider?: string }).provider}/${(ctx.model as { id?: string }).id}`
@@ -283,20 +306,33 @@ export default function (pi: ExtensionAPI): void {
       : ctx.sessionManager.getEntries();
   }
 
-  function setModeStatus(ctx: import("@earendil-works/pi-coding-agent").ExtensionContext): void {
-    if (ctx.mode !== "tui") return;
-    ctx.ui.setStatus("pstack-mode", potetoMode ? "pstack: poteto mode" : undefined);
+  function widgetLine(ctx: ExtensionContext): string {
+    const roles = resolvedMapping(effectiveModelMap(ctx.cwd).map, ROLE_KEYS);
+    const inherited = roles.filter((role) => role.model === "inherit").length;
+    const summary =
+      inherited === roles.length
+        ? `${inherited} inherit`
+        : `${inherited}/${roles.length} inherit`;
+    return `pstack: poteto mode on | roles: ${summary}`;
   }
 
-  function persistMode(enabled: boolean, ctx?: import("@earendil-works/pi-coding-agent").ExtensionContext): void {
+  function renderModeUi(ctx: ExtensionContext): void {
+    if (ctx.mode !== "tui") return;
+    ctx.ui.setStatus("pstack-mode", potetoMode ? "pstack: poteto mode" : undefined);
+    ctx.ui.setWidget("pstack", potetoMode ? [widgetLine(ctx)] : undefined, {
+      placement: "belowEditor",
+    });
+  }
+
+  function persistMode(enabled: boolean, ctx?: ExtensionContext): void {
     potetoMode = enabled;
     pi.appendEntry(MODE_ENTRY_TYPE, { enabled });
-    if (ctx) setModeStatus(ctx);
+    if (ctx) renderModeUi(ctx);
   }
 
   pi.on("session_start", async (_event, ctx) => {
     potetoMode = lastModeEnabled(sessionEntries(ctx));
-    setModeStatus(ctx);
+    renderModeUi(ctx);
     const toolNames = new Set(pi.getAllTools().map((tool) => tool.name));
     const missing = COMPANIONS.filter((companion) => !toolNames.has(companion.tool));
     if (missing.length === 0) return;

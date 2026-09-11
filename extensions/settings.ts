@@ -183,15 +183,13 @@ export function buildTier(tier: "all-inherit" | "light"): ModelMap {
     };
   }
   return {
-    defaultModel: "opencode-go/hy3",
+    defaultModel: "inherit",
     defaultThinking: "high",
     agentOverrides: {
-      scout: { model: "inherit", thinking: "low" },
-      worker: { model: "inherit" },
-      reviewer: { model: "inherit" },
-      oracle: { model: "inherit", fallbackModels: ["opencode-go/deepseek-v4-flash"] },
-      "poteto-agent": { model: "inherit", thinking: "high" },
-      "comment-sicko": { model: "inherit", thinking: "high" },
+      scout: { thinking: "low" },
+      oracle: { thinking: "high" },
+      "poteto-agent": { thinking: "high" },
+      "comment-sicko": { thinking: "high" },
     },
   };
 }

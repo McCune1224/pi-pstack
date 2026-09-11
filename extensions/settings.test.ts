@@ -37,25 +37,40 @@ test("buildTier is pure and idempotent", () => {
   assert.equal(JSON.stringify(buildTier("all-inherit")), JSON.stringify(all));
 
   const light = buildTier("light");
-  assert.equal(light.defaultModel, "opencode-go/hy3");
   assert.equal(light.defaultThinking, "high");
-  assert.equal(light.agentOverrides?.scout?.thinking, "low");
-  assert.deepEqual(light.agentOverrides?.oracle?.fallbackModels, ["opencode-go/deepseek-v4-flash"]);
-  assert.equal(light.agentOverrides?.["poteto-agent"]?.thinking, "high");
+  assert.deepEqual(light.agentOverrides, {
+    scout: { thinking: "low" },
+    oracle: { thinking: "high" },
+    "poteto-agent": { thinking: "high" },
+    "comment-sicko": { thinking: "high" },
+  });
+  assert.equal(JSON.stringify(buildTier("light")), JSON.stringify(light));
+});
+
+test("light tier writes no model slug other than inherit", () => {
+  const json = JSON.stringify(buildTier("light"));
+  assert.deepEqual(json.match(/[a-z0-9-]+\/[a-z0-9.-]+/gi), null, "no provider/model slug is pinned");
+  assert.ok(json.includes('"defaultModel":"inherit"'), "every role inherits the parent model");
 });
 
 test("resolvedMapping falls back default -> inherit and includes extras", () => {
   const light = buildTier("light");
   const mapped = resolvedMapping(light, ["default", "scout", "oracle", "poteto-agent"]);
-  assert.deepEqual(mapped.map((row) => [row.role, row.model]), [
-    ["default", "opencode-go/hy3"],
-    ["scout", "inherit"],
-    ["oracle", "inherit"],
-    ["poteto-agent", "inherit"],
+  assert.deepEqual(mapped, [
+    { role: "default", model: "inherit", extra: undefined },
+    { role: "scout", model: "inherit", extra: "thinking:low" },
+    { role: "oracle", model: "inherit", extra: "thinking:high" },
+    { role: "poteto-agent", model: "inherit", extra: "thinking:high" },
   ]);
-  assert.ok(mapped.find((row) => row.role === "oracle")?.extra?.includes("fallback:"));
   const empty = resolvedMapping({}, ["default", "worker"]);
   assert.deepEqual(empty.map((row) => row.model), ["inherit", "inherit"]);
+  const handWrittenFallback = resolvedMapping(
+    { agentOverrides: { oracle: { model: "inherit", fallbackModels: ["demo/one"] } } },
+    ["oracle"],
+  );
+  assert.deepEqual(handWrittenFallback, [
+    { role: "oracle", model: "inherit", extra: "fallback:demo/one" },
+  ]);
 });
 
 test("saveSettings merges into existing settings, never clobbers", () => {
