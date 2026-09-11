@@ -101,7 +101,9 @@ npm run check:piisms       # fail if Cursor-only content would ship
 
 `scripts/pi-deltas.json` is the artifact to read. It declares each Pi adaptation as data: a literal or regex substitution, a whole-file override with a baselined upstream hash, an exclusion such as Cursor's Grok Bot UI skill, or a file we add such as `control-cli`.
 
-`npm run verify:sync` classifies every vendored file as verbatim upstream, a rule-explained delta, a baselined override, a declared exclude, a declared add, or unexplained. It exits non-zero on any unexplained file, and it also fails when a rule matches nothing. That second failure is the important one. A stale rule means upstream moved the text the rule targeted, so the adaptation needs revisiting instead of silently disappearing. Run it to see the current split, which is a few dozen rule-explained deltas and three baselined overrides across a tree that is otherwise verbatim upstream.
+`npm run verify:sync` classifies every vendored file as verbatim upstream, a rule-explained delta, a baselined override, a declared exclude, a declared add, or unexplained. It exits non-zero on any unexplained file, and it also fails when a rule matches nothing. That second failure is the important one. A stale rule means upstream moved the text the rule targeted, so the adaptation needs revisiting instead of silently disappearing.
+
+`npm run verify:guards` is the check on the check. It mutates a throwaway copy of the tree five ways, each one a defect the port must catch, and fails if any mutation slips through: a hand edit to a vendored file, a deleted rule, a rule whose target text moved, an override whose upstream baseline moved, and an excluded file reappearing. It then confirms the tree still reads clean. Run it to see the lever hold.
 
 Three files stay ours and are baselined against the upstream hash, so an upstream edit fails the check until someone merges it by hand: `skills/poteto-mode/SKILL.md`, `skills/setup-pstack/SKILL.md`, and `docs/guide/01-setup.md`.
 
@@ -147,7 +149,8 @@ npm ci
 npm run typecheck        # strict tsc over extensions/
 npm test                 # unit tests for the extension logic and the rule engine
 npm run verify:sync      # port parity against the pinned upstream ref
-npm run check:piisms     # exit 1 if Cursor-shaped content would ship
+npm run verify:guards    # mutation-tests the parity check itself
+npm run check:piisms     # exit 1 on Cursor coupling, long dashes, or a broken link
 ```
 
 Verify against a real Pi surface before releasing. `pi -e . -p "Say ok"` must load clean, and `/pstack-status` in a TUI session must show the 50 skills and the resolved model map.
