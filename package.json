@@ -31,6 +31,7 @@
     "agents/",
     "docs/",
     "extensions/",
+    "scripts/",
     "README.md",
     "LICENSE"
   ],
@@ -61,9 +62,10 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run typecheck && npm test",
-    "test": "node --experimental-strip-types --test extensions/*.test.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run verify:sync",
+    "test": "node --experimental-strip-types --test extensions/*.test.ts scripts/lib/*.test.mjs",
     "check:piisms": "node scripts/check-pi-isms.mjs",
+    "verify:sync": "node scripts/verify-sync.mjs",
     "sync:upstream": "node scripts/sync-upstream.mjs"
   },
   "devDependencies": {

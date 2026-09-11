@@ -1,0 +1,626 @@
+{
+  "version": 1,
+  "upstream": {
+    "repo": "https://github.com/cursor/plugins",
+    "path": "pstack",
+    "ref": "f5bdd6826fd0a0d9cbc4347134c3a74a200b9d9d",
+    "version": "0.15.2"
+  },
+  "note": "Rules apply in declaration order per file. Long, line-specific rules are declared before the uniform ones they would otherwise be consumed by. A rule that matches nothing fails the run, so upstream drift surfaces as a STALE RULE instead of a silent loss.",
+  "rules": [
+    {
+      "kind": "substitute",
+      "id": "guide-make-it-yours-draft",
+      "path": "docs/guide/09-make-it-yours.md",
+      "find": "It drafts `.cursor/skills/<your-name>-mode/SKILL.md` through Cursor's built-in `create-skill` flow",
+      "replace": "It drafts `<your-name>-mode` as a skill through this package's [`create-skill`](../../skills/create-skill/SKILL.md) flow",
+      "reason": "create-skill ships in this package on Pi, not in the host runtime."
+    },
+    {
+      "kind": "substitute",
+      "id": "guide-make-it-yours-authoring",
+      "path": "docs/guide/09-make-it-yours.md",
+      "find": "which routes through Cursor's built-in `create-skill`,",
+      "replace": "which routes through this package's [`create-skill`](../../skills/create-skill/SKILL.md) skill,",
+      "reason": "Same create-skill origin, stated in the authoring playbook reference."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-reflect-reviewer-spawn",
+      "path": "skills/reflect/SKILL.md",
+      "find": "One message, three `Task` calls, `subagent_type: generalPurpose`, explicit `model:` on each, agent mode (`readonly: false`).",
+      "replace": "One message, three parallel `subagent` calls, an explicit `agent` and `model` on each, and `mode: \"agent\"` so MCP access survives.",
+      "reason": "Pi uses the subagent tool with agent names and a mode field. Readonly mode strips MCP, which these reviewers need for ticket, chat, and trace lookups."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-reflect-synthesizer-spawn",
+      "path": "skills/reflect/SKILL.md",
+      "find": "One `Task` call, `subagent_type: generalPurpose`, using your configured reflect-judgment model (default `claude-fable-5-1-thinking-max`), agent mode (`readonly: false`).",
+      "replace": "One `subagent` call on the reflect-judgment agent, `mode: \"agent\"` so MCP access survives.",
+      "reason": "Same shape as the reviewer spawn. The synthesizer spot-verifies citations, which needs MCP."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-swarm-worker-spawn",
+      "path": "skills/swarm/SKILL.md",
+      "find": "Spawn all N workers in one message with `subagent_type: generalPurpose`, `environment: \"cloud\"`, `run_in_background: true`, and the configured model. Use `environment: \"local\"` only when the worker needs access to something on the user's computer.",
+      "replace": "Spawn all N workers in one message with `agent: \"scout\"`, `async: true`, and the configured model. Pi subagents always run locally, which is what these workers need.",
+      "reason": "Pi has no cloud execution environment. Subagents run on the user's machine, so the local-versus-cloud choice does not exist."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-agent-comment-sicko-spawn",
+      "path": "skills/no-comments/SKILL.md",
+      "find": "Spawn `Task` with `subagent_type: \"Comment Sicko\"`.",
+      "replace": "Spawn `subagent({ agent: \"comment-sicko\" })`.",
+      "reason": "The comment reviewer is a Pi agent registered by this package, invoked through the subagent tool."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-interrogate-launch",
+      "path": "skills/interrogate/SKILL.md",
+      "find": "Launch all reviewers in a single message using the Task tool.",
+      "replace": "Launch all reviewers in a single message with parallel `subagent` calls.",
+      "reason": "Pi has no Task tool. The reviewers are parallel subagent calls."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-interrogate-reviewer-a",
+      "path": "skills/interrogate/SKILL.md",
+      "find": "| Reviewer A | `claude-fable-5-1-thinking-max` |",
+      "replace": "| Reviewer A | inherit the parent model |",
+      "reason": "Reviewer models come from the /pstack-setup map on Pi."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-interrogate-reviewer-b",
+      "path": "skills/interrogate/SKILL.md",
+      "find": "| Reviewer B | `gpt-5.6-sol-max` |",
+      "replace": "| Reviewer B | inherit, or a model family that differs from the parent's |",
+      "reason": "Reviewer models come from the /pstack-setup map on Pi."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-interrogate-reviewer-c",
+      "path": "skills/interrogate/SKILL.md",
+      "find": "| Reviewer C | `grok-4.6-fast-xhigh` |",
+      "replace": "| Reviewer C | inherit, or a model family that differs from the parent's |",
+      "reason": "Reviewer models come from the /pstack-setup map on Pi."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-interrogate-reviewer-d",
+      "path": "skills/interrogate/SKILL.md",
+      "find": "| Reviewer D | `claude-opus-5-thinking-xhigh` |",
+      "replace": "| Reviewer D | inherit, or a model family that differs from the parent's |",
+      "reason": "Reviewer models come from the /pstack-setup map on Pi."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-model-defaults",
+      "path": "**/*.md",
+      "regex": true,
+      "find": "\\(defaults? `[^`]+`(?:, `[^`]+`)*\\)",
+      "replace": "(default: inherit, the parent session model)",
+      "reason": "Upstream pins Cursor model slugs as role defaults. Pi runs every role on the parent session model unless /pstack-setup assigned one, so a concrete slug would name a model the reader may not have."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-model-panel-list",
+      "path": "**/*.md",
+      "find": "`claude-fable-5-1-thinking-max`, `gpt-5.6-sol-max`, `grok-4.6-fast-xhigh`, `claude-opus-5-thinking-xhigh`",
+      "replace": "your configured panel, one model family per runner",
+      "reason": "Upstream names its own four-model panel. Pi roles come from the /pstack-setup map instead."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-model-swarm-default",
+      "path": "skills/swarm/SKILL.md",
+      "find": "Otherwise use `grok-4.6-fast-xhigh`.",
+      "replace": "Otherwise inherit the parent session model.",
+      "reason": "Same pinned-slug problem, on a line without the (default ...) shape."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-model-settings-path",
+      "path": "**/*.md",
+      "find": "`~/.cursor/rules/pstack-models.mdc`",
+      "replace": "the `subagents.*` keys in Pi settings",
+      "reason": "Pi stores role models in its own settings files, not in a Cursor always-applied rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-transcript-glob",
+      "path": "**/*.md",
+      "find": "`~/.cursor/projects/*/`",
+      "replace": "other working-directory session subdirs",
+      "reason": "Pi groups sessions by working directory under ~/.pi/agent/sessions/, not by Cursor project slug."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-plugin-install-path",
+      "path": "**/*.md",
+      "find": "plugin-installed paths under `~/.cursor/plugins/`",
+      "replace": "plugin-installed paths under the `@mccune1224/pi-pstack` package",
+      "reason": "Pi installs packages under its own npm root, not a Cursor plugins directory."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-ask-tool-name",
+      "path": "**/*.md",
+      "find": "`AskQuestion`",
+      "replace": "`ask_user_question`",
+      "reason": "The Pi tool is named ask_user_question."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-pr-lanes-model",
+      "path": "**/*",
+      "find": "Ten lanes on `grok-4.6-fast-xhigh` at the PR head",
+      "replace": "Ten parallel lanes at the PR head",
+      "reason": "A pinned Cursor model slug in the verification skeleton reads as an instruction to use a model the reader may not have. Only the lane count carries meaning."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-agent-role-line",
+      "path": "**/*.md",
+      "find": "`subagent_type`: `generalPurpose`",
+      "replace": "`agent`: the one `/pstack-setup` assigned this role",
+      "reason": "Pi selects a subagent by name through the subagent tool, not by a subagent_type field."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-agent-poteto-inline",
+      "path": "**/*.md",
+      "find": "`subagent_type: \"poteto-agent\"`",
+      "replace": "`agent: \"poteto-agent\"`",
+      "reason": "Same field name, inline form, for the poteto-agent route."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-automate-me-transcripts",
+      "path": "skills/automate-me/SKILL.md",
+      "find": "Locate the active workspace's transcripts before fanning out. The system prompt names the workspace's `agent-transcripts/` directory. Use only that path. Don't glob across other working-directory session subdirs. That crosses workspace boundaries and reads private chats from unrelated projects.",
+      "replace": "Locate the active working directory's transcripts before fanning out. Pi stores them under `~/.pi/agent/sessions/--<cwd-with-slashes-as-dashes>--/`. Use only that subdir. Don't glob across other working-directory session subdirs, that reads private sessions from unrelated projects.",
+      "reason": "Pi stores sessions under ~/.pi/agent/sessions/, keyed by working directory."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-eval-transcripts",
+      "path": "skills/poteto-mode/playbooks/eval.md",
+      "find": "Read each candidate's local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names this path). Do not glob across other working-directory session subdirs. That crosses workspace boundaries and reads private chats from unrelated projects.",
+      "replace": "Read each candidate's local transcript under `~/.pi/agent/sessions/--<cwd-with-slashes-as-dashes>--/`. Do not glob across other working-directory session subdirs, that reads private sessions from unrelated projects.",
+      "reason": "Pi stores sessions under ~/.pi/agent/sessions/, keyed by working directory."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-reflect-transcripts",
+      "path": "skills/reflect/SKILL.md",
+      "find": "The parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory. Use that path. Do not glob across other working-directory session subdirs. That crosses workspace boundaries and reads private chats from unrelated projects.",
+      "replace": "The parent finds its own transcript file before fanning out. Pi keeps this run's session under `~/.pi/agent/sessions/--<cwd-with-slashes-as-dashes>--/`. Use that subdir. Do not glob across other working-directory session subdirs, that reads private sessions from unrelated projects.",
+      "reason": "Pi stores sessions under ~/.pi/agent/sessions/, keyed by working directory."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-session-pickup-transcripts",
+      "path": "skills/poteto-mode/playbooks/session-pickup.md",
+      "find": "A local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path. Do not glob across other working-directory session subdirs, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch.",
+      "replace": "A local transcript under `~/.pi/agent/sessions/--<cwd-with-slashes-as-dashes>--/`. Do not glob across other working-directory session subdirs, that reads private sessions from unrelated projects. Or a background-run handoff, or a pushed branch.",
+      "reason": "Pi stores sessions under ~/.pi/agent/sessions/, keyed by working directory, and has no cloud-agent URLs."
+    },
+    {
+      "kind": "substitute",
+      "id": "show-me-your-work-transcripts",
+      "path": "skills/show-me-your-work/SKILL.md",
+      "find": "Read this run's transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path). Don't glob across other working-directory session subdirs. That reads unrelated private chats.",
+      "replace": "Read this run's session under `~/.pi/agent/sessions/--<cwd-with-slashes-as-dashes>--/`, newest file first. Don't glob across other working-directory session subdirs, that reads unrelated private sessions.",
+      "reason": "Pi stores sessions under ~/.pi/agent/sessions/, keyed by working directory."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-recall-transcript-path",
+      "path": "skills/recall/SKILL.md",
+      "find": "Transcripts live at `~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl`, where `<slug>` is the workspace path with the leading slash dropped and each \"/\" turned into \"-\" (so `/Users/you/proj` becomes `Users-you-proj`). Every line is one chat message.",
+      "replace": "Transcripts live at `~/.pi/agent/sessions/--<slug>--/<timestamp>_<id>.jsonl`, where `<slug>` is the working directory with the leading slash dropped and every \"/\" and \":\" turned into \"-\" (so `/Users/you/proj` becomes `Users-you-proj`). Every line is one chat message.",
+      "reason": "Pi's session directory name drops the leading slash and dashes every slash and colon. The file is named from the creation timestamp and the session id."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-repo-layout-paths",
+      "path": "**/*",
+      "find": "pstack/skills/",
+      "replace": "skills/",
+      "reason": "Upstream nests pstack under a pstack/ directory in its monorepo. This repo is the pstack package, so its paths are one level shorter."
+    },
+    {
+      "kind": "substitute",
+      "id": "guide-build-clean-deslop",
+      "path": "docs/guide/05-build-and-clean.md",
+      "find": "`/deslop` ships in the `cursor-team-kit` plugin, not in pstack. If you don't have it, ask for the same outcome in plain words: remove narrating comments, unsupported guards, dead compatibility paths, and unrelated edits.",
+      "replace": "`/deslop` ships in this package as [`/skill:deslop`](../../skills/deslop/SKILL.md). The bar is the same either way: remove narrating comments, unsupported guards, dead compatibility paths, and unrelated edits.",
+      "reason": "deslop is bundled here, so the guide points at the local skill instead of telling the reader to ask in plain words."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-team-kit-plugin",
+      "path": "**/*",
+      "find": "from the `cursor-team-kit` plugin",
+      "replace": "from this package",
+      "reason": "Same bundling, in the from-the-plugin phrasing that would otherwise read as 'the this package plugin'."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-team-kit",
+      "path": "**/*",
+      "find": "`cursor-team-kit`",
+      "replace": "this package",
+      "reason": "control-cli, control-ui, and deslop ship here instead of in cursor-team-kit, so a reader never has to install a second plugin."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-create-skill-skill",
+      "path": "**/*.md",
+      "find": "Cursor's built-in `create-skill` skill",
+      "replace": "the bundled `create-skill` skill",
+      "reason": "create-skill is a skill in this package on Pi, not a host built-in."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-create-skill",
+      "path": "**/*.md",
+      "find": "Cursor's built-in `create-skill`",
+      "replace": "the bundled `create-skill` skill",
+      "reason": "Same origin, in the shorter phrasing."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-create-skill-note",
+      "path": "**/*.md",
+      "find": "(Cursor's built-in for authoring SKILL.md files)",
+      "replace": "(bundled with this package)",
+      "reason": "Same origin, in the parenthetical phrasing."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-environment",
+      "path": "skills/why/SKILL.md",
+      "find": "list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.",
+      "replace": "list the available MCPs from the Pi session. Use the available-tools map when present. Otherwise inspect the MCP configuration Pi loads.",
+      "reason": "Pi exposes MCP servers through its own configuration, not a Cursor mcps/ directory."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-builtin-babysit",
+      "path": "skills/poteto-mode/playbooks/babysit.md",
+      "find": "This playbook replaces Cursor's built-in babysit skill for these requests, so do not route there even though its description matches the same words.",
+      "replace": "This playbook owns these requests, so do not route to a built-in babysit skill even though its description matches the same words.",
+      "reason": "Pi has no built-in babysit skill to contrast against."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-bug-fix",
+      "path": "skills/poteto-mode/playbooks/bug-fix.md",
+      "find": "Drive a long or stubborn hunt with Cursor's `/loop` command.",
+      "replace": "Drive a long or stubborn hunt by re-checking the finish condition each pass.",
+      "reason": "Pi has no /loop command. The hunt re-checks its own predicate instead."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-autonomous-run",
+      "path": "skills/poteto-mode/playbooks/autonomous-run.md",
+      "find": "Pick the wake mechanism using Cursor's `/loop` command (a built-in, not a pstack skill).",
+      "replace": "Pick the wake mechanism. Pi has no `/loop`, so the run re-checks the finish condition when the watched event fires or when the operator next writes.",
+      "reason": "Pi has no /loop command, so the wake mechanism is an event watcher plus the operator's next turn."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-audit-tick",
+      "path": "**/*.md",
+      "find": "A local root arms each tick as a real terminal `/loop`. The loop uses a monitored-shell 30-minute sleep and emits an output-notification sentinel. A cloud root uses the existing cloud-sleeper wake chain instead.",
+      "replace": "The root arms each tick as a background subagent that sleeps 30 minutes and reports back. Pi has no cloud execution, so the tick always runs locally.",
+      "reason": "Pi has no /loop and no cloud execution environment. A background subagent is the available tick mechanism."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-audit-checklist",
+      "path": "skills/poteto-mode/playbooks/multi-phase-plan.md",
+      "find": "- [ ] Arm the 30-minute audit tick. In a local session, a real terminal `/loop`. In a cloud root, a cloud-sleeper wake chain. Never leave the cadence to memory.",
+      "replace": "- [ ] Arm the 30-minute audit tick as a background subagent that sleeps and reports. Never leave the cadence to memory.",
+      "reason": "Same mechanism substitution in the checklist form."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-watch-drive",
+      "path": "skills/poteto-mode/playbooks/babysit.md",
+      "find": "Run `drive` and `background` under `/loop` in dynamic mode.",
+      "replace": "Run `drive` and `background` as background subagent ticks.",
+      "reason": "Pi has no /loop command to hold the watcher."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-shipping",
+      "path": "skills/poteto-mode/playbooks/shipping.md",
+      "find": "Hold the watch under `/loop` in dynamic mode.",
+      "replace": "Hold the watch with a background subagent tick.",
+      "reason": "Pi has no /loop command to hold the watch."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-visual-parity",
+      "path": "skills/poteto-mode/playbooks/visual-parity.md",
+      "find": "`/loop` per component until the diff is zero.",
+      "replace": "Re-check each component until the diff is zero.",
+      "reason": "Pi has no /loop command to drive the re-check."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-guide-prompt",
+      "path": "docs/guide/07-overnight.md",
+      "find": "/loop until done.",
+      "replace": "keep going until done.",
+      "reason": "The page cannot hand the reader a command Pi does not have. The intent is the finish condition."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-loop-guide-pitfall",
+      "path": "docs/guide/10-recipes-and-pitfalls.md",
+      "find": "\"make it better\" gives `/loop` nothing to check",
+      "replace": "\"make it better\" gives the run nothing to check",
+      "reason": "Same missing command in the pitfall list."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-guide-image-alt",
+      "path": "docs/guide/10-recipes-and-pitfalls.md",
+      "find": "pinned cards reading /how, /tdd, and /loop above the counter",
+      "replace": "pinned cards reading /how and /tdd above the counter",
+      "reason": "The illustration's alt text should not name a command Pi lacks."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cursor-cloud-agent-owner",
+      "path": "**/*.md",
+      "find": "One Cursor cloud agent per PR owns",
+      "replace": "One fresh subagent per PR owns",
+      "reason": "Pi subagents run locally in the operator's session, not as Cursor cloud agents."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-shipping-cloud-agent",
+      "path": "skills/poteto-mode/playbooks/shipping.md",
+      "find": "each a Cursor cloud agent, each exercising",
+      "replace": "each a fresh subagent, each exercising",
+      "reason": "Same substitution for the shipping verifier lanes."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cloud-environment-flag",
+      "path": "skills/poteto-mode/playbooks/orchestrate.md",
+      "find": "Always `environment: \"cloud\"` unless the task needs this machine",
+      "replace": "Always a background subagent unless the task needs this machine",
+      "reason": "Pi subagents always run locally, so there is no environment flag to set."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-orchestrate-transcripts",
+      "path": "skills/poteto-mode/playbooks/orchestrate.md",
+      "find": "Reading local transcripts under `agent-transcripts/`.",
+      "replace": "Reading local transcripts under `~/.pi/agent/sessions/`.",
+      "reason": "Pi stores sessions under ~/.pi/agent/sessions/."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-orchestrate-cloud-status",
+      "path": "skills/poteto-mode/playbooks/orchestrate.md",
+      "find": "pushed branches, the cloud agent's status in the Cursor dashboard",
+      "replace": "pushed branches, and the run's status",
+      "reason": "There is no Cursor dashboard on Pi. Status comes from the subagent status surface and the ledger."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-orchestrate-restart",
+      "path": "skills/poteto-mode/playbooks/orchestrate.md",
+      "find": "After a Cursor restart: local agents are dead, cloud work is not.",
+      "replace": "After a Pi restart: in-flight subagents are gone, committed work is not.",
+      "reason": "The restart in question is Pi's, and the durable half is committed work and pushed branches."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-orchestrate-reattach",
+      "path": "skills/poteto-mode/playbooks/orchestrate.md",
+      "find": "reattach cloud work by PR and branch rather than agent id",
+      "replace": "reattach work by PR and branch rather than run id",
+      "reason": "Run ids do not survive a restart. Branch and PR state does."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cloud-local-store-read",
+      "path": "skills/poteto-mode/playbooks/orchestrate.md",
+      "find": "Cloud agents cannot read the local store, so their briefs inline what they need or point at repo paths.",
+      "replace": "Background subagents can read the local store, but keep briefs to pointers so their context stays small.",
+      "reason": "The constraint that forced inlining is a cloud-execution limit Pi does not have. The pointer habit still earns its place for context size."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-cloud-vm-lane",
+      "path": "skills/poteto-mode/playbooks/multi-phase-plan.md",
+      "find": "Each live lane runs on its own cloud VM at the PR head.",
+      "replace": "Each live lane runs in its own worktree at the PR head.",
+      "reason": "Pi has no cloud VMs. A per-lane worktree gives the same isolation."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-reflect-transcript-ls",
+      "path": "skills/reflect/SKILL.md",
+      "find": "ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10",
+      "replace": "ls -t ~/.pi/agent/sessions/--<cwd-with-slashes-as-dashes>--/*.jsonl 2>/dev/null | head -10",
+      "reason": "Pi groups sessions by working directory under ~/.pi/agent/sessions/ and nests subagent transcripts inside the parent session file."
+    },
+    {
+      "kind": "override",
+      "id": "override-poteto-mode-skill",
+      "path": "skills/poteto-mode/SKILL.md",
+      "basedOn": "sha256:b3c505602b82fb3641a3983e9c46fb974881faa12ece1af804fae27afb7be532",
+      "reason": "Rewritten for Pi. Upstream 0.15.2 weakened the opening non-negotiable to a citation rule and dropped the instruction to make reading the Principles the first todo, which its own guide diagram still shows. This file keeps that instruction, names Pi agents and tools, and points at the skills this package ships rather than cursor-team-kit. Upstream edits must be merged by hand, which the baselined hash enforces."
+    },
+    {
+      "kind": "override",
+      "id": "override-setup-pstack-skill",
+      "path": "skills/setup-pstack/SKILL.md",
+      "basedOn": "sha256:5acdc3db4f15f3e9b81fb56eab7f17cdccde1a11a40053ed7743f7467729c8a9",
+      "reason": "Upstream writes a Cursor always-applied rule. Pi writes the native subagents.* keys instead, so the headless path and the /pstack-setup picker share one source of truth."
+    },
+    {
+      "kind": "override",
+      "id": "override-guide-setup",
+      "path": "docs/guide/01-setup.md",
+      "basedOn": "sha256:5530cdb0138b1abf9f2bbb3d54b1bb7447cfb4d8aa3db5444410257473607c39",
+      "reason": "Pi installs a package and reloads, where Cursor installs a plugin from a marketplace. The whole page is the install and setup walkthrough."
+    },
+    {
+      "kind": "substitute",
+      "id": "guide-overnight-loop",
+      "path": "docs/guide/07-overnight.md",
+      "find": "`/loop` is Cursor's built-in wake mechanism, not a pstack skill. The [Autonomous run playbook](../../skills/poteto-mode/playbooks/autonomous-run.md) uses it to re-check the finish condition on events or a heartbeat.",
+      "replace": "Pi has no `/loop`. The [Autonomous run playbook](../../skills/poteto-mode/playbooks/autonomous-run.md) re-checks the finish condition on events or a heartbeat. Saying \"keep going until the goal is done\" keeps the run alive without one.",
+      "reason": "Pi has no /loop command, so the overnight page must not promise one."
+    },
+    {
+      "kind": "substitute",
+      "id": "show-me-your-work-log-helper",
+      "path": "skills/show-me-your-work/SKILL.md",
+      "find": "`scripts/log.sh <logfile>",
+      "replace": "`scripts/log.mjs <logfile>",
+      "reason": "The helper is cross-platform Node, so the invocation name changes."
+    },
+    {
+      "kind": "substitute",
+      "id": "worktree-cleanup-audit-script",
+      "path": "skills/poteto-mode/playbooks/worktree-cleanup.md",
+      "find": "run `scripts/worktree-audit.sh`",
+      "replace": "run `node scripts/worktree-audit.mjs`",
+      "reason": "The audit lever is cross-platform Node, so the playbook invokes node directly."
+    },
+    {
+      "kind": "substitute",
+      "id": "worktree-cleanup-cursor-root",
+      "path": "skills/poteto-mode/playbooks/worktree-cleanup.md",
+      "find": "misses one that lives at `.cursor/worktrees/myrepo/x`",
+      "replace": "misses one configured under a different worktree root",
+      "reason": "Pi worktrees are not rooted at .cursor/worktrees, so the example must not name that path."
+    },
+    {
+      "kind": "substitute",
+      "id": "agent-comment-sicko-description",
+      "path": "agents/comment-sicko.md",
+      "find": "description: A deranged comment-hater that savors deletion and condemns workaround code.",
+      "replace": "description: A deranged comment-hater that savors deletion and condemns workaround code. Read-only comment reviewer; reports only.",
+      "reason": "The description states the read-only contract, which is what Pi shows when the agent is selected."
+    },
+    {
+      "kind": "insert",
+      "id": "agent-comment-sicko-frontmatter",
+      "path": "agents/comment-sicko.md",
+      "anchor": "^description: ",
+      "position": "after",
+      "text": "thinking: high\nsystemPromptMode: replace\ninheritProjectContext: true\ninheritSkills: true\ntools: read, grep, find, ls, bash",
+      "reason": "Pi agent frontmatter: pin high thinking, replace the host system prompt with the agent body, keep project context and skills, and restrict the tool list to a read-only set."
+    },
+    {
+      "kind": "substitute",
+      "id": "agent-poteto-description-routing",
+      "path": "agents/poteto-agent.md",
+      "find": "description: Routing target for `/poteto-mode` and any request for poteto's style. Resume an existing `poteto-agent` for the conversation rather than spawning a sibling. Reads the `poteto-mode` skill's `SKILL.md` in full before any work, including its inline Principles index. Substituting `generalPurpose` skips that read and drifts.",
+      "replace": "description: Routing target for /poteto-mode and any request for poteto's style. Resume an existing poteto-agent for the conversation rather than spawning a sibling. Reads the poteto-mode skill's SKILL.md in full before any work, including its inline Principles index. Substituting generalPurpose skips that read and drifts.",
+      "reason": "Pi's agent selector renders the description as plain text, so backticks show up literally."
+    },
+    {
+      "kind": "substitute",
+      "id": "agent-poteto-body-locate",
+      "path": "agents/poteto-agent.md",
+      "find": "Read the `poteto-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Navigate to a leaf `principle-*` skill whenever you apply that principle.\n",
+      "replace": "Read the `poteto-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. If it is not already in context, locate it under the installed pi-pstack package's `skills/poteto-mode/` directory. Navigate to a leaf `principle-*` skill whenever you apply that principle.\n\nExecute the assigned task exactly as that skill prescribes: match a playbook, copy its steps in verbatim, cite each principle with the decision it changed, verify against the real artifact, and write the reply clean as you draft it. You own the work. Review your own diff and report what changed for the consumer and the maintainer.\n",
+      "reason": "A Pi subagent starts with a fresh context, so the body tells it where the skill lives and restates the contract it must execute."
+    },
+    {
+      "kind": "insert",
+      "id": "agent-poteto-frontmatter",
+      "path": "agents/poteto-agent.md",
+      "anchor": "^is_background: true$",
+      "position": "before",
+      "text": "thinking: high\nsystemPromptMode: replace\ninheritProjectContext: true\ninheritSkills: true\ntools: read, grep, find, ls, bash, edit, write, subagent",
+      "reason": "Pi agent frontmatter: pin high thinking, replace the host system prompt with the agent body, keep project context and skills, and grant the tools the playbooks need."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-dir-skills",
+      "path": "**/*.md",
+      "find": ".cursor/skills/",
+      "replace": ".pi/skills/",
+      "reason": "Pi reads project-local skills from .pi/skills/."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-command-setup",
+      "path": "**/*.md",
+      "find": "/setup-pstack",
+      "replace": "/pstack-setup",
+      "reason": "The extension registers the command as /pstack-setup, which is what Pi's command list shows."
+    },
+    {
+      "kind": "exclude",
+      "id": "exclude-make-bot-ui",
+      "path": "skills/make-bot-ui/**",
+      "reason": "Drives a Cursor Grok Bot webhook and api2.cursor.sh. Pi has no equivalent; skills/control-ui covers the same job locally."
+    },
+    {
+      "kind": "exclude",
+      "id": "exclude-worktree-audit-sh",
+      "path": "skills/poteto-mode/scripts/worktree-audit.sh",
+      "reason": "Replaced by the cross-platform worktree-audit.mjs so the playbook runs without bash."
+    },
+    {
+      "kind": "exclude",
+      "id": "exclude-log-sh",
+      "path": "skills/show-me-your-work/scripts/log.sh",
+      "reason": "Replaced by the cross-platform log.mjs so the skill runs without bash."
+    },
+    {
+      "kind": "add",
+      "id": "add-control-cli",
+      "path": "skills/control-cli/**",
+      "reason": "Pi-native skill with no upstream counterpart. Ships with this plugin."
+    },
+    {
+      "kind": "add",
+      "id": "add-control-ui",
+      "path": "skills/control-ui/**",
+      "reason": "Pi-native skill with no upstream counterpart. Ships with this plugin."
+    },
+    {
+      "kind": "add",
+      "id": "add-create-skill",
+      "path": "skills/create-skill/**",
+      "reason": "Pi-native skill with no upstream counterpart. Ships with this plugin."
+    },
+    {
+      "kind": "add",
+      "id": "add-deslop",
+      "path": "skills/deslop/**",
+      "reason": "Pi-native skill with no upstream counterpart. Ships with this plugin."
+    },
+    {
+      "kind": "add",
+      "id": "add-worktree-audit-mjs",
+      "path": "skills/poteto-mode/scripts/worktree-audit.mjs",
+      "reason": "Cross-platform replacement for upstream's worktree-audit.sh."
+    },
+    {
+      "kind": "add",
+      "id": "add-log-mjs",
+      "path": "skills/show-me-your-work/scripts/log.mjs",
+      "reason": "Cross-platform replacement for upstream's log.sh."
+    }
+  ]
+}
