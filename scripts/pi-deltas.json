@@ -10,6 +10,14 @@
   "rules": [
     {
       "kind": "substitute",
+      "id": "guide-index-install",
+      "path": "docs/guide/README.md",
+      "find": "Install the plugin and pick your models.",
+      "replace": "Install the package and pick your models.",
+      "reason": "Pi installs a package, and the setup page defines the term that way. The index has to match it."
+    },
+    {
+      "kind": "substitute",
       "id": "guide-make-it-yours-draft",
       "path": "docs/guide/09-make-it-yours.md",
       "find": "It drafts `.cursor/skills/<your-name>-mode/SKILL.md` through Cursor's built-in `create-skill` flow",
@@ -458,6 +466,119 @@
       "reason": "Pi groups sessions by working directory under ~/.pi/agent/sessions/ and nests subagent transcripts inside the parent session file."
     },
     {
+      "kind": "substitute",
+      "id": "pi-em-dash-cvs-description",
+      "path": "skills/create-verification-skill/SKILL.md",
+      "find": "drives your app the way a user does — any language, framework, or platform.",
+      "replace": "drives your app the way a user does, across any language, framework, or platform.",
+      "reason": "The mode skill bans the long-dash character outright. Upstream's sweep missed this file, and a rule the package teaches should hold in the prose it ships."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-cvs-drive",
+      "path": "skills/create-verification-skill/SKILL.md",
+      "find": "Existing harnesses first — Playwright/Cypress specs,",
+      "replace": "Existing harnesses first. Playwright/Cypress specs,",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-cvs-frontmatter",
+      "path": "skills/create-verification-skill/SKILL.md",
+      "find": "when to reach for it — without frontmatter the skill never registers)",
+      "replace": "when to reach for it. Without frontmatter the skill never registers)",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-cvs-doctor",
+      "path": "skills/create-verification-skill/SKILL.md",
+      "find": "worth driving?\" — process up,",
+      "replace": "worth driving?\" Process up,",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-cvs-evidence",
+      "path": "skills/create-verification-skill/SKILL.md",
+      "find": "at the named location — a cleanup that eats the proof fails this step.",
+      "replace": "at the named location. A cleanup that eats the proof fails this step.",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-verdicts",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "regex": true,
+      "find": "\\*\\*(clean|changed|blocked)\\*\\* — ",
+      "replace": "**$1** means ",
+      "reason": "Same long-dash rule, on the three verdict bullets."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-churn",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "find": "missing from the map — require a concrete source path",
+      "replace": "missing from the map. Require a concrete source path",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-launch",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "find": "the verification skill's own launch model — one long-lived instance driven serially",
+      "replace": "the verification skill's own launch model. One long-lived instance driven serially",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-doctor",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "find": "since it last did something surprising — doctor before first drive",
+      "replace": "since it last did something surprising. Doctor before first drive",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-residue",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "find": "outlives that drive's usefulness — failed-iteration residue is cleaned",
+      "replace": "outlives that drive's usefulness. Failed-iteration residue is cleaned",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-retry",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "find": "retry once — restart whatever the fix invalidated, nothing more — before calling",
+      "replace": "retry once, restart whatever the fix invalidated, nothing more, before calling",
+      "reason": "Same long-dash rule, with commas because the clause reads as a parenthetical."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-mvs-teardown",
+      "path": "skills/maintain-verification-skill/SKILL.md",
+      "find": "after the last drive of the run — including those re-proofs — so nothing",
+      "replace": "after the last drive of the run, including those re-proofs, so nothing",
+      "reason": "Same long-dash rule, with commas for the same reason."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-bugbot-heading",
+      "path": "skills/poteto-mode/references/bugbot-triage.md",
+      "find": "cheaply verifiable — run the test first",
+      "replace": "cheaply verifiable, so run the test first",
+      "reason": "Same long-dash rule."
+    },
+    {
+      "kind": "substitute",
+      "id": "pi-em-dash-bugbot-skip",
+      "path": "skills/poteto-mode/references/bugbot-triage.md",
+      "find": "n/a — this is a verification shortcut",
+      "replace": "n/a, this is a verification shortcut",
+      "reason": "Same long-dash rule."
+    },
+    {
       "kind": "override",
       "id": "override-poteto-mode-skill",
       "path": "skills/poteto-mode/SKILL.md",
@@ -609,6 +730,12 @@
       "id": "add-deslop",
       "path": "skills/deslop/**",
       "reason": "Pi-native skill with no upstream counterpart. Ships with this plugin."
+    },
+    {
+      "kind": "add",
+      "id": "add-compare-doc",
+      "path": "docs/compare.md",
+      "reason": "This package's own comparison of upstream pstack and the other Pi port. Upstream has no counterpart."
     },
     {
       "kind": "add",

@@ -39,6 +39,10 @@ const ALLOWED = [
     prefix: "skills/poteto-mode/scripts/watch-pr/",
     why: "Detects Cursor's bugbot review comments on GitHub, which is a real GitHub app and still worth gating on.",
   },
+  {
+    prefix: "docs/compare.md",
+    why: "This file exists to name what differs from upstream and from the other Pi port, so it has to name the things it excludes.",
+  },
 ];
 
 function allowed(path) {
@@ -58,6 +62,7 @@ function* walk(dir) {
 const action = [];
 const documented = [];
 const skipped = [];
+const emDashes = [];
 
 for (const base of ["skills", "agents", "docs"]) {
   const dir = join(root, base);
@@ -66,6 +71,9 @@ for (const base of ["skills", "agents", "docs"]) {
     if (!/\.(md|ts|sh|mjs|js)$/.test(file)) continue;
     const rel = file.replace(`${root}/`, "");
     readFileSync(file, "utf8").split("\n").forEach((line, index) => {
+      if (/\u2014/.test(line) && !allowed(rel)) {
+        emDashes.push({ file: rel, line: index + 1, text: line.trim().slice(0, 150) });
+      }
       if (!PAT.test(line)) return;
       const hit = { file: rel, line: index + 1, text: line.trim().slice(0, 150) };
       if (allowed(rel)) skipped.push(hit);
@@ -77,10 +85,11 @@ for (const base of ["skills", "agents", "docs"]) {
 
 for (const hit of action) console.log(`ACTION ${hit.file}:${hit.line}: ${hit.text}`);
 for (const hit of skipped) console.log(`allowed ${hit.file}:${hit.line}: ${hit.text}`);
+for (const hit of emDashes) console.log(`EM-DASH ${hit.file}:${hit.line}: ${hit.text}`);
 
-console.log(`\n${action.length} action, ${documented.length} documented as a Pi note, ${skipped.length} allowlisted.`);
-if (action.length === 0) {
-  console.log("clean: no unexplained Cursor-only references found.");
+console.log(`\n${action.length} Cursor-coupling, ${emDashes.length} long-dash character, ${documented.length} documented as a Pi note, ${skipped.length} allowlisted.`);
+if (action.length === 0 && emDashes.length === 0) {
+  console.log("clean: no unexplained Cursor coupling and no long-dash characters.");
   process.exit(0);
 }
 process.exit(1);
