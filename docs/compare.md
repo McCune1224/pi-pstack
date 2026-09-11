@@ -23,6 +23,7 @@ The old `sync-upstream.mjs` wiped the vendored tree and asked a human to re-appl
 | Density and mannered-prose pass across every skill | Adopted. This is the bulk of the diff, 98 files. |
 | Two new principle leaves, `principle-attack-the-premise` and `principle-test-behavior-not-implementation` | Adopted, and both added to the mode's principle index. |
 | Critique mode removed from the `how` skill, with `references/critic-prompt.md` and `references/critique-rubric.md` deleted and the callers in `architect` and the investigation playbook updated | Adopted. The two reference files were deleted here too. |
+| Model invocation disabled for `how`, `why`, `unslop`, `typescript-best-practices`, and `make-bot-ui` | Adopted. Pi now hides those four from the model's prompt list, so they are reached by name through `/poteto-mode` or directly with `/skill:<name>`. See the measurement below for why this makes the other port's skill-stripping feature even smaller than it looked. |
 | A rule that every claim carries its evidence or its label | Adopted into the reply contract. |
 | Operator-neutral pronouns in the autopilot and multi-phase playbooks | Adopted. Ours also drops the "lands herself" phrasing. |
 | Forge-neutral shipping that reaches GitHub or Origin instead of requiring Graphite | Adopted. A reader without Graphite is no longer blocked. |
@@ -38,6 +39,7 @@ One upstream change we deliberately did not take. Upstream 0.15.2 replaced the m
 | Capability | This port | `@zenspc/pi-pstack` 0.6.0 |
 |---|---|---|
 | Upstream content | 50 skills, current to 0.15.2 | 47 skills, current to the 0.15.x line |
+| Workflow skills the model sees | 5 of 50, because this port keeps upstream's `disable-model-invocation` flags | 4 of 47, because the port deletes those flags and strips the skills at runtime instead |
 | Setup | `/pstack-setup` interactive wizard. Scope picker, three tiers, per-role picker, and argument fast paths (`-l`, `inherit`, `light`, `custom`, a bare role name) | `/setup-pstack` writes a JSON file. No picker |
 | Where role models live | Pi's own `subagents.*` keys in `settings.json`, shared with the rest of Pi and hand-editable | A private `~/.pi/agent/pstack/models.json` that nothing else reads |
 | Status surface | `/pstack-status` prints the parent session model, the resolved model for every role, the settings file that won, the loaded skill inventory, and the system-prompt token cost of the model-visible skills | `/pstack status` reports whether pstack is on or off |
@@ -46,31 +48,35 @@ One upstream change we deliberately did not take. Upstream 0.15.2 replaced the m
 | Missing-dependency check | At startup, names each missing companion package, what it provides, and the install command | None |
 | Pi-only skills | `control-cli`, `control-ui`, `create-skill` have no counterpart in the other port | Absent |
 | Port drift control | `scripts/pi-deltas.json` declares every adaptation, `npm run verify:sync` classifies every vendored file and fails on anything unexplained, and a rule that stops matching is itself a failure | None. A re-vendor is a manual diff |
-| Prompt-cost transparency | Measured and printed by `/pstack-status` | Strips skills from the prompt to save tokens without reporting the number |
+| Prompt-cost transparency | Measured and printed by `/pstack-status` | Strips skills without reporting the number |
+| Skill visibility toggle | None. Follows upstream's static `disable-model-invocation` flags, which hide 45 of 50 skills | `/pstack on|off` toggles skill visibility at runtime |
 | Role model resolution | Recomputed from the settings chain on every status call, so `inherit` always shows what it currently means | Reads its own config file |
 | Tests | 18 committed tests over the extension logic and the sync rule engine | `check-plan` tests plus watch-pr tests |
 
 We are behind in exactly one respect that matters to a stranger: release cadence. The other port has shipped six releases since 2026-08-22 and this one is at 0.1.0.
 
-## The one place the other port does more, and why we declined it
+## The one place the other port does more, and what we did instead
 
-`@zenspc/pi-pstack` strips this package's own skills out of the model's system prompt. That is a real prompt-budget feature and it is the single thing it does that we do not.
+`@zenspc/pi-pstack` ships `/pstack on|off`, a runtime toggle that adds and removes pstack's skills from the model's prompt list. It is a real convenience and it is the single thing that port has which this one does not.
 
-We measured the saving before deciding, because the number decides whether it earns its place.
+It exists because of a design difference, not a missing capability. Upstream 0.15.2 marks `how`, `why`, `unslop`, and `typescript-best-practices` with `disable-model-invocation: true`, and Pi honours it by leaving them out of the prompt. This port keeps upstream's flags. The other port deletes those flags from its copy and gives the user a runtime toggle instead, so the default state is the same on both and the toggle is the addition.
+
+We measured both sides before deciding whether to grow our own equivalent.
 
 ```
 total skills: 50
-filtered by Pi already (disable-model-invocation): 45
-exposed to the model: 5
-exposed skills: control-cli, control-ui, create-skill, deslop, setup-pstack
-estimated system-prompt cost of those 5: about 371 tokens
+hidden by Pi from upstream's flags: 45
+offered to the model: 5, control-cli, control-ui, create-skill, deslop, setup-pstack
+their four toggleable skills, how, why, unslop, typescript-best-practices: about 373 tokens
+the five this port leaves offered: about 402 tokens
+all nine together: about 776 tokens
 ```
 
-Pi filters 45 of the 50 skills on its own, because upstream marks them `disable-model-invocation: true` and Pi honours it. The remaining 5 cost roughly 371 tokens. Stripping those 5 saves about 0.4 percent of a typical context budget, and it costs the model the ability to reach `control-cli`, `control-ui`, `create-skill`, and `deslop` on its own judgement.
+The two designs land in the same place by default. Their toggle can hide about 373 tokens; this port already hides those same 373 tokens because upstream asked Pi to. What separates them is the mechanism and the reporting.
 
-So `/pstack-status` reports the number instead. A user who wants the tokens back can act on a measurement. Hiding four skills to save a number we would not otherwise disclose is the worse trade, and reporting the cost is the more useful feature.
+A static frontmatter flag costs no extension state, survives an upgrade, and works in any Pi session including one where this extension failed to load. A runtime toggle needs mode state, a command, and a way to re-apply the strip on every turn. We kept the flag, and we spent the equivalent effort on telling you the number instead. `/pstack-status` prints the live cost, and undoing a flag is documented in the README as one deleted line plus `/reload`.
 
-If upstream's filter set shrinks and that number climbs, the decision should be revisited. The number is printed on demand for exactly that reason.
+If you want the toggle specifically, the other port has one and this one does not. That is an honest difference rather than a gap we are hiding, and the measurement above is why we did not build the same thing.
 
 ## Related projects
 

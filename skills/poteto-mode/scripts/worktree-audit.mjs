@@ -1,11 +1,4 @@
 #!/usr/bin/env node
-// Read-only worktree prune audit, cross-platform (Node only).
-// Classifies every git worktree by size, merge state, uncommitted work,
-// remote/PR state, and the most recent chat that operated in it. Emits a
-// table sorted by size with a suggested bucket. Never deletes anything;
-// deletion stays a human-gated step in the playbook.
-//
-// Usage: node worktree-audit.mjs [repo-path]   (defaults to the current repo)
 import { statSync, readdirSync, readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";

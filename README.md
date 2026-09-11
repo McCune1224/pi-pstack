@@ -75,9 +75,11 @@ Because the map lives in Pi's own settings, it is not private to this package. A
 
 ## Skills
 
-All 50 ship and load together. Pi filters 45 of them out of the model's system prompt for free, because they carry `disable-model-invocation: true`. The 5 Pi does expose, `control-cli`, `control-ui`, `create-skill`, `deslop`, and `setup-pstack`, cost roughly 371 system-prompt tokens in total. `/pstack-status` prints the live number for your install.
+All 50 ship and load together. Pi filters 45 of them out of the model's system prompt because they carry `disable-model-invocation: true`. That is upstream's own choice, and it includes `how`, `why`, `unslop`, and `typescript-best-practices`. Read those four by name through `/poteto-mode`, or invoke them directly with `/skill:how`, `/skill:why`, `/skill:unslop`, and `/skill:typescript-best-practices`. The 5 Pi does offer on its own judgement, `control-cli`, `control-ui`, `create-skill`, `deslop`, and `setup-pstack`, cost about 402 system-prompt tokens in total. `/pstack-status` prints the live number for your install.
 
-The workflow skills run the mode: `how` and `why` for understanding, `architect` and `arena` for design, `swarm` for parallel checks, `interrogate` for adversarial review, `unslop`, `deslop`, and `no-comments` for clean output, and 23 first-principle leaves that ground every decision. Delegation happens through your own subagents, so one chat stays in control while the work fans out.
+If you would rather have the workflow skills auto-routable, delete the `disable-model-invocation: true` line from the frontmatter of the ones you want and run `/reload`. The cost is a few hundred more prompt tokens.
+
+The workflow skills run the mode. `how` and `why` for understanding, `architect` and `arena` for design, `swarm` for parallel checks, `interrogate` for adversarial review, `unslop`, `deslop`, and `no-comments` for clean output, and 23 first-principle leaves that ground every decision. Delegation happens through your own subagents, so one chat stays in control while the work fans out.
 
 Two agents ship under the pstack names upstream uses:
 
@@ -105,7 +107,7 @@ Three files stay ours and are baselined against the upstream hash, so an upstrea
 
 ## How this compares to the other pstack ports
 
-Short version: we ship more of the workflow, a better setup and status surface, and a port you can audit. The [full comparison](docs/compare.md) covers the details and the places a competing port does something we deliberately do not.
+Short version: we ship more of the workflow, a better setup and status surface, and a port you can audit. The one thing a competing port has that we do not is a runtime toggle for skill visibility, and the [full comparison](docs/compare.md) explains what we chose instead and why.
 
 ## Companions
 
