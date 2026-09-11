@@ -1,92 +1,93 @@
 ---
 name: setup-pstack
-description: Configure which models pstack uses per role for Pi. Detects your available Pi models and writes Pi settings that override skill defaults. Manual fallback for the /pstack-setup command; use it when the extension picker is unavailable.
+description: Configure which models pstack uses per role for Pi. Detects your available Pi models and writes the subagents.* keys in Pi settings. Manual fallback for the /pstack-setup command; use it when the extension picker is unavailable.
 ---
 
-# Setup pstack (Pi)
+# Setup pstack
 
-This skill writes Pi's native model config, so delegated agents stay on cheap models you already have.
+Write the `subagents.*` keys in Pi settings. `/pstack-setup` does the same thing through Pi's TUI pickers. Run this skill when you want the headless path, or when you need a mapping the picker does not offer.
 
-## Pi model config path
+## Where Pi reads a delegate's model
 
-Pi resolves models in this order:
-1. Per-run `subagent({model:"..."})` override
-2. Agent frontmatter `model:`
-3. `~/.pi/agent/settings.json` -> `subagents.agentOverrides.<name>.model`
+First match wins:
+
+1. `subagent({ model: "..." })` on the call itself
+2. `model:` in the agent's frontmatter
+3. `subagents.agentOverrides.<agent>.model`
 4. `subagents.defaultModel`
-5. Parent session `defaultModel` (`opencode-go/hy3` for you)
+5. the parent session model
 
-All pstack roles default to `inherit` (parent model). That keeps cost on `hy3`. Only set an explicit model when you want a tier.
+pstack agents are already run through `pi-subagents`, and their frontmatter carries no model, so step 3 or step 4 decides. Leave both unset and every role runs on the parent model, which costs nothing extra. Set them only when you want a tier.
 
-Pi has these config scopes:
-- User: `~/.pi/agent/settings.json` -> `subagents.*`
-- Project: `.pi/settings.json` -> `subagents.*` (project wins)
+Two scopes, and project wins:
+
+- User `~/.pi/agent/settings.json`
+- Project `.pi/settings.json`
 
 ## Steps
 
 ### 1. Detect available models
 
-Source is `pi --list-models` / `ctx.modelRegistry`. For this host the cheap pool is `opencode-go/hy3`, `opencode-go/deepseek-v4-flash`, `opencode-go/inherit`, `opencode-go/gpt-5.6-luna`, plus `openrouter/*` and `openai-codex/*` if you want to burn subs. Prefer AskQuestion with detected slugs + `inherit`.
-
-If you cannot detect, ask user to paste slugs. Never write a slug you have not confirmed via registry. `inherit` (alias `auto` / `inherit-parent`) is always valid and means run on parent model.
+Read the models the session can reach. `ctx.modelRegistry.getAvailable()` inside the extension, or the list `/model` shows, is the dependable source. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The value `inherit` is always valid even though it is not a detected slug.
 
 ### 2. Load current state
 
-Read `~/.pi/agent/settings.json` and `.pi/settings.json` if present. Extract `subagents.defaultModel`, `subagents.agentOverrides`, `subagents.defaultThinking`. If absent, treat as `inherit`.
+Read `~/.pi/agent/settings.json` and, when the project has one, `.pi/settings.json`. Extract `subagents.defaultModel`, `subagents.defaultThinking`, and `subagents.agentOverrides`. Treat anything absent as `inherit`.
 
-### 3. Map and confirm (TUI)
+### 3. Map pstack roles onto Pi agents
 
-Show every pstack role mapped to Pi agent names:
+pstack names 17 roles. Pi has six agents, so several roles share one. Show the mapping, not 17 lines.
 
-| pstack role | Pi agent/override key |
+| pstack role | Pi agent |
 |---|---|
-| feature, refactoring, bug-fix, perf, hillclimb | `worker` |
-| how explorer, why investigators, swarm workers | `scout` |
-| how explainer, why synthesizer, judgment/prose, hardest | `oracle` |
-| how critics, arena runners/cross-judge, architect runners, interrogate reviewers | `reviewer` (fan-out) + `oracle` |
+| feature, refactoring | `worker` |
+| bug-fix, perf-issue, hillclimb | `oracle` |
+| judgment and prose, hardest tasks | `oracle` |
+| how explorer, why investigators | `scout` |
+| how explainer, why synthesizer | `oracle` |
+| reflect tooling | `worker` |
+| reflect judgment, divergent, synthesizer | `oracle` |
+| arena runners, architect runners, interrogate reviewers | `reviewer` |
+| arena cross-judge pool | `oracle` |
+| swarm workers | `scout` |
+| the playbook orchestrator itself | `poteto-agent` |
+| comment review | `comment-sicko` |
 
-Instead of 15 separate lines, Pi condenses to 4-5 overrides. Offer detected models + `inherit` as options via `ctx.ui.select` / `ask_user_question`. For panel roles (critics/runners) the value is a list - in Pi that means multiple `subagent` calls; keep list length small to limit cost.
+Then show every agent with its current model, marking any real slug that is not in the detected set as needing a choice. Offer the detected models plus `inherit`. Prefer a picker over free text.
 
-Prefer `inherit` for cost. The extension `/pstack-setup` command does this via a TUI picker.
+A role whose value is a list upstream (the arena and architect panels, the interrogate reviewers) becomes repeated `subagent` calls here. The list length sets the fan-out, so keep it small.
 
 ### 4. Validate
 
-Every real slug must be in registry. `inherit` always passes. If not available, ask again. A bad slug breaks delegation.
+Every real slug you write must be in the detected set. `inherit` always passes. If a chosen slug is not available, stop and ask again.
 
-### 5. Write the rule
+### 5. Write the settings
 
-Write Pi settings, not Cursor rules. Update `~/.pi/agent/settings.json` (or `.pi/settings.json` with `-l` flag):
+Merge into the target `settings.json` without disturbing other keys. Overwrite the `subagents.*` keys you own so re-runs stay idempotent. Shape:
 
 ```json
 {
   "subagents": {
-    "defaultModel": "opencode-go/hy3",
+    "defaultModel": "inherit",
     "defaultThinking": "high",
     "agentOverrides": {
-      "scout": {"model": "inherit", "thinking": "low"},
-      "worker": {"model": "inherit"},
-      "reviewer": {"model": "inherit"},
-      "oracle": {"model": "inherit", "fallbackModels": ["opencode-go/deepseek-v4-flash"]}
+      "scout": { "model": "inherit", "thinking": "low" },
+      "worker": { "model": "inherit" },
+      "reviewer": { "model": "inherit" },
+      "oracle": { "model": "inherit", "fallbackModels": ["<a cheaper model you have>"] },
+      "poteto-agent": { "model": "inherit", "thinking": "high" },
+      "comment-sicko": { "model": "inherit", "thinking": "high" }
     }
   }
 }
 ```
 
-
-
-For explicit tier (cheapest -> still cheap):
-- `scout`: `opencode-go/hy3` low
-- `worker`/`reviewer`: `inherit`
-- `oracle`: `opencode-go/deepseek-v4-flash` or `inherit` + fallback
+`inherit` is the right starting value. It runs every delegate on the parent model at no extra cost, and it is what the all-inherit tier writes.
 
 ### 6. Confirm
 
-Tell user settings were written and require `/reload` or restart to apply. Mention `pi-subagents` picks up overrides after reload. Run `/subagents-models` to verify live mapping. Re-running this skill updates it.
+Tell the user which file changed and that it applies from the next turn. Pi re-reads settings per turn, so no reload is needed. `/pstack-status` shows the resolved map and which file won.
 
-### 7. Offer verification skill (optional)
+### 7. Offer a verification skill (optional)
 
-Same as upstream: if project lacks a `verify-*` skill, offer `/create-verification-skill` once.
-
-## Also available as slash command
-
-Run `/pstack-setup` in Pi TUI. It does steps 1-6 via interactive pickers without loading this skill text. This SKILL.md is the manual fallback.
+Check whether the project has a way to drive the real app for proof, a `verify-*` skill or an existing harness. If not, offer once: "want a project-local verification skill, so agents can drive the app the way a user does and prove changes work? I can generate one with /create-verification-skill." On yes, invoke `/create-verification-skill`. On no, move on without pushing.

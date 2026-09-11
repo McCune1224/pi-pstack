@@ -1,16 +1,16 @@
 # Set up pstack
 
-In this page you install the plugin, pick which models pstack uses, and run your first task. Setup is one command plus a short conversation.
+In this page you install the package, pick which models pstack uses, and run your first task. Setup is one command plus a short conversation.
 
-## Install the plugin
-
-In a Pi chat, install the package:
+## Install the package
 
 ```bash
-pi install /path/to/pi-pstack
+pi install npm:@mccune1224/pi-pstack
 ```
 
-Then run `/reload`. Pi registers the skills, agents, and commands. If the package is published, `pi install git:github.com/<you>/pi-pstack` works the same way.
+From a checkout, `pi install /path/to/pi-pstack` works the same way. Then run `/reload`, and Pi registers the skills, the agents, and the commands.
+
+Install [`pi-subagents`](https://www.npmjs.com/package/pi-subagents) alongside it. It provides the `subagent` tool that every routed workflow uses. pstack checks at startup and names the missing package when it is absent.
 
 ## Pick your models
 
@@ -20,11 +20,26 @@ Run:
 /pstack-setup
 ```
 
-[`/pstack-setup`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes the `subagents.*` keys in Pi settings, the same source every pstack skill reads.
+[`/pstack-setup`](../../skills/setup-pstack/SKILL.md) reads the models your session can reach, asks where to save the map, and offers three tiers: all-inherit, light, or a per-role picker. Fast paths skip the questions, so `/pstack-setup -l` writes to the project, `/pstack-setup inherit` takes the cheapest tier, and `/pstack-setup scout` changes one role.
 
-You only override what you care about. A role with no override keeps the `inherit` default (the parent model). To restore the default later, run `/pstack-setup` again, or clear the override in `~/.pi/agent/settings.json`.
+It writes the `subagents.*` keys in Pi settings, which is the same place every other Pi tool reads model choices from:
 
-Set a role to `inherit` and pstack omits the subagent `model` field, so the subagent runs on your parent chat model. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures the default model for every `/swarm` worker unless a race names a model for each arm. `.pi/settings.json` for a team-shared mapping.
+- User scope: `~/.pi/agent/settings.json`
+- Project scope: `.pi/settings.json`, which wins when both exist
+
+Every role defaults to `inherit`, which runs the delegate on your parent session model at no extra cost. That is the recommended setting. Set a role explicitly only when you want a tier, and `/pstack-status` shows the resolved map and names the file that won.
+
+Because pstack uses Pi's own settings, the mapping is not private to this package. Anything else that reads `subagents.*` sees the same choices, and you can edit the file by hand.
+
+## Check what is loaded
+
+Run:
+
+```text
+/pstack-status
+```
+
+[`/pstack-status`](../../extensions/index.ts) prints the parent session model, the effective model for every role, the settings file that won, and how many pstack skills are loaded. It also reports the system-prompt cost of the skills Pi exposes to the model.
 
 ## Accept the verification offer, or don't
 
@@ -32,7 +47,7 @@ At the end of setup, `/pstack-setup` looks for a way to prove app behavior in yo
 
 Say yes and it writes `.pi/skills/verify-<app>/`, a project-local skill that teaches agents to drive your app the way a user does. It proves the skill works once before handing it over. Say no and setup moves on. You can run `/create-verification-skill` yourself any time. [Verify and ship](./06-verify-and-ship.md#create-a-project-verification-skill) covers when it earns its place.
 
-After setup, run `/reload`. The model mapping applies from the next turn.
+The model map applies from the next turn. Pi re-reads settings per turn, so no reload is needed.
 
 ## Run your first task
 
@@ -42,8 +57,8 @@ Pick something real but small, and describe it the way you'd describe it to a co
 /poteto-mode add a --json flag to this command. text output stays byte-identical. verify both.
 ```
 
-Watch the todo list. The first item is always "read the Principles section". The rest are the matched playbook's steps copied in, the Feature playbook for this prompt. If `/poteto-mode` skips a step, the step stays in the list with `skip: <reason>`, so you can see what it chose not to do.
+Watch the todo list. The first item is always to read the Principles section. The rest are the matched playbook's steps copied in, the Feature playbook for this prompt. If `/poteto-mode` skips a step, the step stays in the list with `skip: <reason>`, so you can see what it chose not to do.
 
-From here you can type normal follow-ups. `/poteto-mode` is sticky. It stays on for the conversation until you opt out by saying so.
+From here you can type normal follow-ups. `/poteto-mode` is sticky. It stays on for the session, the choice persists across reloads, and the footer shows `pstack: poteto mode` while it is on. `/poteto-mode off` turns it back off.
 
 Next: [Route work through `/poteto-mode`](./02-poteto-mode.md).
