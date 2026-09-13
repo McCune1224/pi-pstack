@@ -36,6 +36,52 @@ export interface ModelMap {
 export type Tier = "all-inherit" | "light" | "custom";
 export type Scope = "user" | "project";
 
+export type BudgetKey = "unlimited" | "large" | "medium" | "small";
+
+export interface BudgetSpec {
+  thinking: ThinkingLevel | undefined;
+  blurb: string;
+}
+
+export const BUDGETS: Record<BudgetKey, BudgetSpec> = {
+  unlimited: { thinking: undefined, blurb: "keep each role's own setting" },
+  large: { thinking: "xhigh", blurb: "xhigh reasoning" },
+  medium: { thinking: "high", blurb: "high reasoning" },
+  small: { thinking: "medium", blurb: "medium reasoning" },
+};
+
+const BUDGET_KEYS = new Set<string>(Object.keys(BUDGETS));
+
+export function applyBudget(map: ModelMap, budget: BudgetKey): ModelMap {
+  const next: ModelMap = { ...map };
+  const thinking = BUDGETS[budget].thinking;
+  if (thinking) {
+    next.defaultThinking = thinking;
+  } else {
+    delete next.defaultThinking;
+  }
+  return next;
+}
+
+export function budgetOf(map: ModelMap): BudgetKey {
+  switch (map.defaultThinking) {
+    case "xhigh":
+    case "max":
+      return "large";
+    case "high":
+      return "medium";
+    case "medium":
+      return "small";
+    default:
+      return "unlimited";
+  }
+}
+
+export function budgetLabel(map: ModelMap): string {
+  const key = budgetOf(map);
+  return `${key} (${BUDGETS[key].blurb})`;
+}
+
 export const ROLE_KEYS: RoleKey[] = [
   "default",
   "scout",
@@ -74,13 +120,14 @@ export interface ParsedArgs {
   scope: Scope | undefined;
   tier?: Tier;
   role?: RoleKey;
+  budget?: BudgetKey;
 }
 
 const ROLE_SET = new Set<string>(ROLE_KEYS);
 
 export function parseArgs(raw: string): ParsedArgs {
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
-  const out: ParsedArgs = { scope: undefined, tier: undefined, role: undefined };
+  const out: ParsedArgs = { scope: undefined, tier: undefined, role: undefined, budget: undefined };
   for (const token of tokens) {
     if (token === "-l" || token === "--local" || token === "local") {
       out.scope = "project";
@@ -90,6 +137,8 @@ export function parseArgs(raw: string): ParsedArgs {
       out.tier = "light";
     } else if (token === "custom") {
       out.tier = "custom";
+    } else if (BUDGET_KEYS.has(token)) {
+      out.budget = token as BudgetKey;
     } else if (ROLE_SET.has(token)) {
       out.role = token as RoleKey;
     }
@@ -224,7 +273,8 @@ export function summaryText(
   loadedPstackSkills: string[],
 ): string {
   const scopeName = scope === "project" ? "project" : scope === "user" ? "user" : "none saved";
-  const lines = [`pstack models (${scopeName}):`];
+  const budget = budgetOf(map);
+  const lines = [`pstack models (${scopeName}), budget: ${budget} (${BUDGETS[budget].blurb}):`];
   for (const role of resolvedMapping(map, ROLE_KEYS)) {
     lines.push(
       `  ${role.role} -> ${role.model}${role.extra ? ` (${role.extra})` : ""}`,

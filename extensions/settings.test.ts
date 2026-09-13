@@ -5,6 +5,9 @@ import { join } from "node:path";
 import { test } from "node:test";
 import {
   POTETO_DIRECTIVE,
+  applyBudget,
+  budgetLabel,
+  budgetOf,
   buildTier,
   lastModeEnabled,
   loadSettings,
@@ -12,16 +15,53 @@ import {
   parseModelId,
   resolvedMapping,
   saveSettings,
+  summaryText,
   type ModeEntry,
 } from "./settings.ts";
 
 test("parseArgs maps scope, tier, and role tokens", () => {
-  assert.deepEqual(parseArgs("-l inherit"), { scope: "project", tier: "all-inherit", role: undefined });
-  assert.deepEqual(parseArgs("scout"), { scope: undefined, tier: undefined, role: "scout" });
-  assert.deepEqual(parseArgs(""), { scope: undefined, tier: undefined, role: undefined });
-  assert.deepEqual(parseArgs("--local light"), { scope: "project", tier: "light", role: undefined });
-  assert.deepEqual(parseArgs("custom poteto-agent"), { scope: undefined, tier: "custom", role: "poteto-agent" });
-  assert.deepEqual(parseArgs("nonsense-token"), { scope: undefined, tier: undefined, role: undefined });
+  assert.deepEqual(parseArgs("-l inherit"), { scope: "project", tier: "all-inherit", role: undefined, budget: undefined });
+  assert.deepEqual(parseArgs("scout"), { scope: undefined, tier: undefined, role: "scout", budget: undefined });
+  assert.deepEqual(parseArgs(""), { scope: undefined, tier: undefined, role: undefined, budget: undefined });
+  assert.deepEqual(parseArgs("--local light"), { scope: "project", tier: "light", role: undefined, budget: undefined });
+  assert.deepEqual(parseArgs("custom poteto-agent"), { scope: undefined, tier: "custom", role: "poteto-agent", budget: undefined });
+  assert.deepEqual(parseArgs("nonsense-token"), { scope: undefined, tier: undefined, role: undefined, budget: undefined });
+});
+
+test("parseArgs maps budget tokens, alone and combined", () => {
+  assert.equal(parseArgs("small").budget, "small");
+  assert.equal(parseArgs("unlimited").budget, "unlimited");
+  assert.deepEqual(parseArgs("-l large"), { scope: "project", tier: undefined, role: undefined, budget: "large" });
+  assert.equal(parseArgs("medium scout").role, "scout");
+  assert.equal(parseArgs("medium scout").budget, "medium");
+});
+
+test("applyBudget sets and clears defaultThinking without mutating its input", () => {
+  const base = { defaultModel: "inherit", defaultThinking: "high" as const };
+  const raised = applyBudget(base, "large");
+  assert.equal(raised.defaultThinking, "xhigh");
+  assert.equal(base.defaultThinking, "high", "input map is untouched");
+  const cleared = applyBudget(base, "unlimited");
+  assert.equal(cleared.defaultThinking, undefined);
+  assert.ok("defaultThinking" in cleared === false, "unlimited removes the key instead of writing null");
+  const lowered = applyBudget({}, "small");
+  assert.equal(lowered.defaultThinking, "medium");
+});
+
+test("budgetOf reads the recorded budget back off the map", () => {
+  assert.equal(budgetOf({}), "unlimited");
+  assert.equal(budgetOf({ defaultThinking: "xhigh" }), "large");
+  assert.equal(budgetOf({ defaultThinking: "max" }), "large");
+  assert.equal(budgetOf({ defaultThinking: "high" }), "medium");
+  assert.equal(budgetOf({ defaultThinking: "medium" }), "small");
+  assert.equal(budgetOf({ defaultThinking: "low" }), "unlimited", "a hand-written level below the ladder reads as unlimited");
+  assert.equal(budgetLabel({ defaultThinking: "high" }), "medium (high reasoning)");
+});
+
+test("summaryText names the budget on the header line", () => {
+  const text = summaryText(applyBudget(buildTier("all-inherit"), "small"), "user", []);
+  assert.ok(text.includes("budget: small"), text);
+  assert.ok(text.startsWith("pstack models (user), budget: small"), text);
 });
 
 test("parseModelId strips labels to ids", () => {

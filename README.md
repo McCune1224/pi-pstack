@@ -1,160 +1,94 @@
 # pi-pstack
 
-pstack for Pi, with the parts a skill set cannot give you on its own: an install-time setup wizard, a status command that tells you what actually resolved, sticky Poteto Mode that survives a reload, and an upstream port you can prove is current.
+Poteto's engineering workflow on the Pi Agent Harness. Fifty skills, two agents, and an extension that wires the workflow into the parts of Pi a skill file cannot reach: settings, sessions, compaction, and the context window.
 
-**What this is for.** You want Poteto's engineering discipline, the write-less-higher-quality workflow built from playbooks and principles, running on Pi. A pile of SKILL.md files gets you half of it. The other half is the wiring: which model each delegated role runs on, whether the mode is on right now, what Pi loaded, and whether the port still matches upstream. That wiring is an extension, and it ships here.
+pstack is Lauren Tan's plugin for Cursor. Two other Pi ports carry the same name. This one differs in kind, not in degree: it is the port that treats Pi as a harness to build on. The skills are the same rigorous core everywhere. What you do with the rest of the machine is what this package is for.
 
-## What you get
+## What only this port ships
 
-**A mode that picks the workflow for you.** `/poteto-mode <task>` matches your request to one of 23 playbooks (bug fix, feature, perf, hillclimb, shipping, orchestrate, and more), opens a todo list with that playbook's steps copied in verbatim, and routes to the other skills as each step fires. It is sticky: turn it on once and follow-up turns keep the rigor until you say stop.
+**A setup wizard that writes Pi's own settings.** `/pstack-setup` asks for a reasoning budget (unlimited, large, medium, small), then maps six roles onto the models your session can reach. It writes the `subagents.*` keys in `settings.json`, the same keys every other Pi tool reads. Nothing private, nothing parallel, hand-editable.
 
-**An extension nobody else's port ships.** `/pstack-setup` is an interactive wizard with three tiers and a per-role picker. `/pstack-status` prints the parent session model, the resolved model for every role, which settings file won, and the real system-prompt cost of the skills Pi exposes. `/bro` restates the last reply in plain language. A startup check names any missing companion package and its install command.
+**A context guard with the principle enforced.** While Poteto Mode is on, the extension meters the context window every turn. At 70 percent it tells you to hand long output to files. At 85 it tells you to capture the decision state. At 92 it offers one-key compaction. The HUD below the editor shows the meter live.
 
-**A port that declares itself.** Every difference from upstream is written down as data in `scripts/pi-deltas.json` and checked by `npm run verify:sync`. You can see exactly what we changed and why, and a stale rule fails the build instead of rotting quietly. Nothing drifts.
+**Compaction that keeps the run.** When Poteto Mode compacts, the summary is shaped around what the run needs to survive: the matched playbook and its step, the decision ledger with the principles cited, what was verified and how, file paths, next actions. Pi's default compaction summarizes a chat. This one resumes a job.
 
-**50 skills.** 23 workflow skills adapted from upstream, 23 first-principle leaves, and 4 Pi-only additions: `control-cli`, `control-ui`, `create-skill`, and `deslop`.
+**A doctor.** `/pstack-doctor` validates both settings files, flags role typos that would silently do nothing, checks the package agents' frontmatter, counts the vendored playbooks, names missing companion packages, and reports the upstream pin.
+
+**A port you can prove.** Every adaptation from upstream Cursor pstack is declared as data in `scripts/pi-deltas.json`. `npm run verify:sync` classifies all 100+ vendored files and fails on anything unexplained. A rule that stops matching is itself a failure, and the check is mutation-tested: `npm run verify:guards` injects hand edits, deleted rules, and stale baselines to prove the checker catches them.
 
 ## Install
 
-Requires Pi 0.84 or newer. Install [`pi-subagents`](https://www.npmjs.com/package/pi-subagents) alongside it. It registers the `subagent` tool that every routed workflow uses, and the plugin warns at startup when it is absent.
+Requires Pi 0.84 or newer. Install [`pi-subagents`](https://www.npmjs.com/package/pi-subagents) alongside it; it registers the `subagent` tool every routed workflow uses, and this package warns at startup when it is absent.
 
 ```bash
 pi install npm:@mccune1224/pi-pstack
 # or from the repository
 pi install git:github.com/McCune1224/pi-pstack
-# or from a local checkout
-pi install /path/to/pi-pstack
 ```
 
 Then run `/reload`.
 
 ## Get started
 
-Two steps.
+1. Run `/pstack-setup`. Pick a scope, a budget, and a tier, or assign models per role. Everything defaults to `inherit`: delegated agents run on your parent model, at no extra cost, with no thinking floor. That is the recommended start.
+2. Run `/poteto-mode <task>` when the task needs rigor. The mode is sticky. Follow-ups keep the playbook discipline until `/poteto-mode off`, and the footer shows the state while it is on.
 
-1. Run `/pstack-setup`. Pick a scope and a tier, or assign a model per role. Everything defaults to `inherit`, which runs delegated agents on your parent model at no extra cost.
-2. Run `/poteto-mode <task>` whenever the task needs rigor. The mode stays on for the session and the footer shows `pstack: poteto mode`.
-
-New to this? The [guide](docs/guide/README.md) walks through a first task from setup to verification.
+New here? The [guide](docs/guide/README.md) walks a first task from install to verified ship.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/poteto-mode` | Enable sticky Poteto Mode and optionally run a task. `/poteto-mode <task>` matches a playbook and routes the work. `/poteto-mode` alone just enables the mode. `/poteto-mode off` disables it. The choice persists across reloads and shows a footer status while on. |
-| `/pstack-setup` | Model configuration wizard. Picks the scope, applies a tier, or assigns a model per role. Writes only the `subagents.*` keys in Pi settings. Fast paths: `-l` for project scope, `inherit`, `light`, or `custom` to skip the tier picker, and a bare role name such as `scout` to change one role. |
-| `/pstack-status` | One screen: parent session model, effective model per role, which settings file wins, which pstack skills loaded, and what the model-visible skills cost in system-prompt tokens. |
-| `/bro` | Restates the last assistant reply in plain human language. |
+| `/poteto-mode` | Enable sticky Poteto Mode and optionally run a task. `<task>` matches one of 23 playbooks and copies its steps into a todo list verbatim. `off` disables. Tab completes playbook names. The choice survives a reload. |
+| `/pstack-setup` | Model configuration. Reasoning budget first, then scope, tier, or a single role. Fast paths: `-l`, `inherit`, `light`, `custom`, a budget word like `small`, or a bare role name like `scout`. |
+| `/pstack-status` | Parent session model, resolved model and thinking level per role, the recorded budget, the winning settings file, the loaded skill inventory, and the system-prompt token cost of what the model sees. |
+| `/pstack-doctor` | Install diagnostics: settings validity, unknown roles, agent frontmatter, playbook count, companion tools, upstream pin. |
+| `/bro` | Restates the last reply in plain human language. |
 
-No tools are registered. Skills carry the workflow. The extension only wires what a skill cannot reach: the model registry, the settings files, the session, and the TUI.
+No tools are registered. Skills carry the workflow; the extension only reaches what skills cannot.
 
-## Sticky Poteto Mode
+## How it uses the harness
 
-Poteto Mode is the entry point, and it is sticky. Once enabled it stays on for the session, so follow-ups keep the rigor without re-invoking it.
+| Pi mechanism | What pstack does with it |
+|---|---|
+| `subagents.*` settings keys | Role models and thinking levels, user or project scope, shared with the rest of Pi |
+| Session entries | Poteto Mode state, so the sticky mode survives reloads and restarts |
+| `before_agent_start` | A short mode directive that points at the `poteto-mode` skill, never a duplicated rule |
+| Context usage | The guard thresholds and the HUD meter |
+| Compaction events | The poteto summary shape, with fallback to Pi's default on any failure |
+| Widgets and status | The `pstack: poteto mode` footer and the live roles, budget, and context line |
 
-- `/poteto-mode <task>` enables the mode and routes that task through the playbook matcher.
-- `/poteto-mode` with no task enables the mode only.
-- `/poteto-mode off` disables it. `disable` and `stop` also work.
-- Invoking `/skill:poteto-mode` directly enables the mode too.
+Because the model map lives in Pi's own settings, it is not private to this package. The project scope in `.pi/settings.json` wins over the user scope when both exist.
 
-The choice persists across sessions through a session entry, and the footer shows `pstack: poteto mode` while it is on. Every turn gets a short directive pointing at the `poteto-mode` skill as the single source of truth, so the rules are never duplicated in the extension.
+## The skills
 
-## Model configuration
+50 ship and load together: 23 workflow skills, 23 first-principle leaves, and 4 Pi-only additions (`control-cli`, `control-ui`, `create-skill`, `deslop`). Upstream disables model invocation for most of them, so Pi filters 45 out of the system prompt and the mode skill reaches them by name as steps fire; the 5 Pi offers on its own judgment cost about 400 prompt tokens. `/pstack-status` prints the live number for your install.
 
-Pi resolves a delegate's model in this order, first match wins:
+Two agents ship under the upstream names: `poteto-agent` runs the mode end to end, `comment-sicko` reviews comments through `/no-comments`. Both inherit your parent model until `/pstack-setup` says otherwise.
 
-1. A `model` on the `subagent` call itself
-2. `model:` in the agent's frontmatter
-3. `~/.pi/agent/settings.json` to `subagents.agentOverrides.<name>.model`
-4. `subagents.defaultModel`
-5. The parent session model
-
-`/pstack-setup` writes keys 3 and 4, plus the thinking levels a tier sets. With nothing set, every role inherits your parent model, which costs nothing extra and is the recommended starting point. Set an explicit model only when you want a tier.
-
-Because the map lives in Pi's own settings, it is not private to this package. Anything else that reads `subagents.*` sees the same choices, and you can edit the file by hand. The project scope in `.pi/settings.json` wins over the user scope when both exist.
-
-## Skills
-
-All 50 ship and load together. Pi filters 45 of them out of the model's system prompt because they carry `disable-model-invocation: true`. That is upstream's own choice, and it includes `how`, `why`, `unslop`, and `typescript-best-practices`. Read those four by name through `/poteto-mode`, or invoke them directly with `/skill:how`, `/skill:why`, `/skill:unslop`, and `/skill:typescript-best-practices`. The 5 Pi does offer on its own judgement, `control-cli`, `control-ui`, `create-skill`, `deslop`, and `setup-pstack`, cost about 402 system-prompt tokens in total. `/pstack-status` prints the live number for your install.
-
-If you would rather have the workflow skills auto-routable, delete the `disable-model-invocation: true` line from the frontmatter of the ones you want and run `/reload`. The cost is a few hundred more prompt tokens.
-
-The workflow skills run the mode. `how` and `why` for understanding, `architect` and `arena` for design, `swarm` for parallel checks, `interrogate` for adversarial review, `unslop`, `deslop`, and `no-comments` for clean output, and 23 first-principle leaves that ground every decision. Delegation happens through your own subagents, so one chat stays in control while the work fans out.
-
-Two agents ship under the pstack names upstream uses:
-
-- `poteto-agent` runs the mode end to end. It reads `poteto-mode` in full, including the inline principles index, before doing any work.
-- `comment-sicko` is the read-only comment reviewer, invoked through `/no-comments`.
-
-Both inherit your parent model by default. Configure them per role with `/pstack-setup`.
+The [guide](docs/guide/README.md) has a chapter per workflow stage, and [compare.md](docs/compare.md) puts this port next to upstream and the other Pi port with reproducible numbers.
 
 ## Keeping the port current
 
-The port is machine-checked, not hand-maintained.
-
 ```bash
 git clone --depth 400 https://github.com/cursor/plugins.git /tmp/upstream-plugins
-npm run sync:upstream      # vendor upstream at the pinned ref and apply the declared Pi deltas
-npm run verify:sync        # classify every file and fail on anything unexplained
+npm run sync:upstream      # vendor upstream at the pinned ref and apply the declared deltas
+npm run verify:sync        # classify every file, fail on anything unexplained
 npm run check:piisms       # fail if Cursor-only content would ship
+npm run verify:guards      # mutation-test the checker itself
 ```
 
-`scripts/pi-deltas.json` is the artifact to read. It declares each Pi adaptation as data: a literal or regex substitution, a whole-file override with a baselined upstream hash, an exclusion such as Cursor's Grok Bot UI skill, or a file we add such as `control-cli`.
-
-`npm run verify:sync` classifies every vendored file as verbatim upstream, a rule-explained delta, a baselined override, a declared exclude, a declared add, or unexplained. It exits non-zero on any unexplained file, and it also fails when a rule matches nothing. That second failure is the important one. A stale rule means upstream moved the text the rule targeted, so the adaptation needs revisiting instead of silently disappearing.
-
-`npm run verify:guards` is the check on the check. It mutates a throwaway copy of the tree five ways, each one a defect the port must catch, and fails if any mutation slips through: a hand edit to a vendored file, a deleted rule, a rule whose target text moved, an override whose upstream baseline moved, and an excluded file reappearing. It then confirms the tree still reads clean. Run it to see the lever hold.
-
-Three files stay ours and are baselined against the upstream hash, so an upstream edit fails the check until someone merges it by hand: `skills/poteto-mode/SKILL.md`, `skills/setup-pstack/SKILL.md`, and `docs/guide/01-setup.md`.
-
-## How this compares to the other pstack ports
-
-Short version: we ship more of the workflow, a better setup and status surface, and a port you can audit. The one thing a competing port has that we do not is a runtime toggle for skill visibility, and the [full comparison](docs/compare.md) explains what we chose instead and why.
-
-## Companions
-
-pi-pstack loads on its own. Three Pi packages back specific surfaces, and only the first is required.
-
-| Package | Why |
-|---|---|
-| `npm:pi-subagents` | Required. Registers the `subagent` tool, reads this package's `agents/`, and backs every routed workflow. Without it, delegation has no backend. |
-| `npm:@juicesharp/rpiv-todo` | Recommended. The playbooks open a todo list through the `todo` tool. |
-| `npm:@juicesharp/rpiv-ask-user-question` | Recommended. Skills reach you through the `ask_user_question` tool. |
-
-## Not shipped
-
-Two upstream pieces cannot work on Pi because they are bound to Cursor's runtime:
-
-- `make-bot-ui` drives Cursor's Grok Bot webhook panels through `api2.cursor.sh`. The Pi answer to the same job is `control-ui`, which drives the UI locally.
-- The `benny` automation pack registers through Cursor's automation runtime, which Pi does not have.
-
-Both are declared as excludes in `scripts/pi-deltas.json` with that reason attached.
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| Skills do not appear | Run `/reload` after install. `/pstack-status` lists the loaded pstack skills and should show 50. |
-| Model changes do not apply | `/pstack-setup` writes settings and Pi re-reads them per turn. `/pstack-status` shows what resolved and which file won. |
-| Startup warning about a missing companion | `pi install <package>` for each name in the warning, then `/reload`. |
-| `/poteto-mode` does not engage | Run `/skill:poteto-mode <task>` directly. A user-scope skill with the same name shadows the package one, so remove it from `~/.pi/agent/skills/`. |
-| `verify:sync` reports a stale rule | Upstream moved the text that rule targeted. Read the file, update the rule or retire it, then re-run. |
-| `verify:sync` reports an override is stale | Upstream edited a file we own. Merge its changes into our copy, then run `node scripts/verify-sync.mjs --accept-overrides` and commit both. |
-| Everything broke after an upgrade | Pin a version with `pi install git:github.com/McCune1224/pi-pstack@<tag>`. `git log` shows each release. |
+The pin, the two commits it covers, and what each upstream change became here are written up in [compare.md](docs/compare.md).
 
 ## Development
 
 ```bash
-npm ci
-npm run typecheck        # strict tsc over extensions/
-npm test                 # unit tests for the extension logic and the rule engine
-npm run verify:sync      # port parity against the pinned upstream ref
-npm run verify:guards    # mutation-tests the parity check itself
-npm run check:piisms     # exit 1 on Cursor coupling, long dashes, or a broken link
+npm test          # node:test over the extension logic, 44 cases
+npm run typecheck
 ```
 
-Verify against a real Pi surface before releasing. `pi -e . -p "Say ok"` must load clean, and `/pstack-status` in a TUI session must show the 50 skills and the resolved model map.
+Extension logic is split into testable units: `settings.ts` (model maps and budgets), `context-guard.ts` (thresholds), `compaction.ts` (the summary contract), `doctor.ts` (validators), `skill-budget.ts` (prompt cost). Tests run on plain node, no build step.
 
 ## License
 
-MIT. The skillset is adapted from poteto's [pstack](https://github.com/cursor/plugins/tree/main/pstack) (MIT, Lauren Tan). The Pi extension, the sync lever, and the four Pi-only skills are this package's own.
+MIT. Upstream pstack is Lauren Tan's work; this port follows upstream and names every place it departs.

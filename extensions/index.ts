@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   CONFIG_DIR_NAME,
@@ -7,10 +8,30 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { analyzeSkillBudget, readSkillSources } from "./skill-budget.ts";
 import {
+  POTETO_COMPACT_INSTRUCTIONS,
+  loadConversationHelpers,
+  runPotetoCompaction,
+} from "./compaction.ts";
+import {
+  type DoctorCheck,
+  checkAgentFrontmatter,
+  checkModelMap,
+  renderReport,
+} from "./doctor.ts";
+import {
+  guardAdvice,
+  guardLevel,
+  isStronger,
+  meterLine,
+  type GuardLevel,
+} from "./context-guard.ts";
+import {
+  BUDGETS,
   MODE_ENTRY_TYPE,
   POTETO_DIRECTIVE,
   ROLE_KEYS,
   availableModels,
+  applyBudget,
   buildTier,
   lastModeEnabled,
   loadSettings,
@@ -20,6 +41,8 @@ import {
   saveSettings,
   settingsPath,
   summaryText,
+  budgetLabel,
+  type BudgetKey,
   type ModeEntry,
   type ModelMap,
   type ModelSpec,
@@ -28,6 +51,20 @@ import {
 } from "./settings.ts";
 
 const SKILLS_DIR = join(import.meta.dirname, "..", "skills");
+const AGENTS_DIR = join(import.meta.dirname, "..", "agents");
+const DELTAS_PATH = join(import.meta.dirname, "..", "scripts", "pi-deltas.json");
+
+const PACKAGE_AGENTS = ["poteto-agent.md", "comment-sicko.md"];
+
+const PLAYBOOK_COMPLETIONS: Array<{ value: string; label: string }> = (() => {
+  try {
+    return readdirSync(join(SKILLS_DIR, "poteto-mode", "playbooks"))
+      .filter((file) => file.endsWith(".md"))
+      .map((file) => ({ value: file.replace(/\.md$/, ""), label: file.replace(/\.md$/, "") }));
+  } catch {
+    return [];
+  }
+})();
 
 const SETUP_COMPLETIONS = [
   "-l",
@@ -37,6 +74,10 @@ const SETUP_COMPLETIONS = [
   "all-inherit",
   "light",
   "custom",
+  "unlimited",
+  "large",
+  "medium",
+  "small",
   "default",
   "scout",
   "worker",
@@ -163,6 +204,20 @@ async function pstackSetupHandler(args: string, ctx: ExtensionCommandContext): P
   const path = settingsPath(ctx.cwd, scope, CONFIG_DIR_NAME);
   const current = loadSettings(path);
 
+  // Fast paths (-l, a tier, or a bare role) skip the budget question, mirroring
+  // upstream's budget-first flow only when the run is fully interactive.
+  const hasFastPath = parsed.tier !== undefined || parsed.role !== undefined;
+  let budget: BudgetKey | undefined = parsed.budget;
+  if (!budget && ctx.hasUI && !hasFastPath) {
+    const pick = await ctx.ui.select(
+      `Reasoning budget for roles without their own level - now ${budgetLabel(current)}`,
+      Object.entries(BUDGETS).map(([key, spec]) => `${key} - ${spec.blurb}`),
+    );
+    if (!pick) return;
+    budget = pick.split(" ")[0] as BudgetKey;
+  }
+  const withBudget = (map: ModelMap): ModelMap => (budget ? applyBudget(map, budget) : map);
+
   if (parsed.role) {
     const currentValue =
       parsed.role === "default"
@@ -183,8 +238,8 @@ async function pstackSetupHandler(args: string, ctx: ExtensionCommandContext): P
         [parsed.role]: { ...current.agentOverrides?.[parsed.role], model: id },
       };
     }
-    saveSettings(path, map);
-    await announceAndReload(ctx, path, map, scope);
+    saveSettings(path, withBudget(map));
+    await announceAndReload(ctx, path, withBudget(map), scope);
     return;
   }
 
@@ -225,6 +280,7 @@ async function pstackSetupHandler(args: string, ctx: ExtensionCommandContext): P
   } else {
     map = buildTier(tier);
   }
+  map = withBudget(map);
   saveSettings(path, map);
   await announceAndReload(ctx, path, map, scope);
 }
@@ -275,6 +331,106 @@ function textContent(content: unknown): string | undefined {
   return parts.length > 0 ? parts.join("\n") : undefined;
 }
 
+function upstreamPin(): { ref: string; version: string } | undefined {
+  try {
+    const spec = JSON.parse(readFileSync(DELTAS_PATH, "utf8")) as {
+      upstream?: { ref?: string; version?: string };
+    };
+    if (!spec.upstream?.ref || !spec.upstream.version) return undefined;
+    return { ref: spec.upstream.ref, version: spec.upstream.version };
+  } catch {
+    return undefined;
+  }
+}
+
+function doctorChecks(pi: ExtensionAPI, ctx: ExtensionCommandContext): DoctorCheck[] {
+  const checks: DoctorCheck[] = [];
+
+  for (const scope of ["user", "project"] as const) {
+    const path = settingsPath(ctx.cwd, scope, CONFIG_DIR_NAME);
+    if (!existsSync(path)) {
+      checks.push({ name: `settings (${scope})`, status: "ok", detail: `${path} absent, nothing pinned` });
+      continue;
+    }
+    const problems = checkModelMap(loadSettings(path), ROLE_KEYS);
+    checks.push({
+      name: `settings (${scope})`,
+      status: problems.length > 0 ? "warn" : "ok",
+      detail: problems.length > 0 ? problems.join("; ") : `${path} parses clean`,
+    });
+  }
+
+  for (const file of PACKAGE_AGENTS) {
+    const path = join(AGENTS_DIR, file);
+    try {
+      const problems = checkAgentFrontmatter(file, readFileSync(path, "utf8"));
+      checks.push({
+        name: `agent ${file}`,
+        status: problems.length > 0 ? "fail" : "ok",
+        detail: problems.length > 0 ? problems.join("; ") : "frontmatter registers with pi-subagents",
+      });
+    } catch {
+      checks.push({ name: `agent ${file}`, status: "fail", detail: `${path} is missing` });
+    }
+  }
+
+  try {
+    const playbooks = readdirSync(join(SKILLS_DIR, "poteto-mode", "playbooks")).filter((f) => f.endsWith(".md"));
+    checks.push({
+      name: "skills",
+      status: existsSync(join(SKILLS_DIR, "poteto-mode", "SKILL.md")) ? "ok" : "fail",
+      detail: `poteto-mode present, ${playbooks.length} playbooks vendored under skills/`,
+    });
+  } catch {
+    checks.push({ name: "skills", status: "fail", detail: "skills/poteto-mode is missing" });
+  }
+
+  const toolNames = new Set(pi.getAllTools().map((tool) => tool.name));
+  for (const companion of COMPANIONS) {
+    const present = toolNames.has(companion.tool);
+    checks.push({
+      name: `companion ${companion.tool}`,
+      status: present ? "ok" : companion.required ? "fail" : "warn",
+      detail: present ? "registered" : `absent: install ${companion.pkg}`,
+    });
+  }
+
+  const pin = upstreamPin();
+  checks.push({
+    name: "upstream pin",
+    status: pin ? "ok" : "warn",
+    detail: pin
+      ? `pstack ${pin.version} at ${pin.ref.slice(0, 12)}; npm run verify:sync proves the port matches`
+      : "scripts/pi-deltas.json unreadable",
+  });
+
+  const effective = effectiveModelMap(ctx.cwd);
+  const parent =
+    ctx.model && typeof ctx.model === "object"
+      ? `${(ctx.model as { provider?: string }).provider ?? "?"}/${(ctx.model as { id?: string }).id ?? "?"}`
+      : "unknown";
+  checks.push({
+    name: "session",
+    status: "ok",
+    detail: `parent model ${parent}, map ${effective.scope}, ${budgetLabel(effective.map)}`,
+  });
+
+  return checks;
+}
+
+async function pstackDoctorHandler(
+  pi: ExtensionAPI,
+  _args: string,
+  ctx: ExtensionCommandContext,
+): Promise<void> {
+  const report = renderReport(doctorChecks(pi, ctx));
+  if (ctx.hasUI) {
+    ctx.ui.notify(report, "info");
+  } else {
+    console.log(report);
+  }
+}
+
 async function broHandler(
   pi: ExtensionAPI,
   _args: string,
@@ -297,6 +453,8 @@ async function broHandler(
 
 export default function (pi: ExtensionAPI): void {
   let potetoMode = false;
+  let guardNotified: GuardLevel = "ok";
+  let conversationHelpers: Awaited<ReturnType<typeof loadConversationHelpers>> | "unavailable" | undefined;
 
   function sessionEntries(ctx: {
     sessionManager: { getBranch?: () => ModeEntry[]; getEntries: () => ModeEntry[] };
@@ -306,20 +464,24 @@ export default function (pi: ExtensionAPI): void {
       : ctx.sessionManager.getEntries();
   }
 
-  function widgetLine(ctx: ExtensionContext): string {
-    const roles = resolvedMapping(effectiveModelMap(ctx.cwd).map, ROLE_KEYS);
+  function widgetLines(ctx: ExtensionContext): string[] {
+    const map = effectiveModelMap(ctx.cwd).map;
+    const roles = resolvedMapping(map, ROLE_KEYS);
     const inherited = roles.filter((role) => role.model === "inherit").length;
     const summary =
       inherited === roles.length
         ? `${inherited} inherit`
         : `${inherited}/${roles.length} inherit`;
-    return `pstack: poteto mode on | roles: ${summary}`;
+    return [
+      `pstack: poteto mode on | roles: ${summary}`,
+      meterLine(ctx.getContextUsage(), budgetLabel(map)),
+    ];
   }
 
   function renderModeUi(ctx: ExtensionContext): void {
     if (ctx.mode !== "tui") return;
     ctx.ui.setStatus("pstack-mode", potetoMode ? "pstack: poteto mode" : undefined);
-    ctx.ui.setWidget("pstack", potetoMode ? [widgetLine(ctx)] : undefined, {
+    ctx.ui.setWidget("pstack", potetoMode ? widgetLines(ctx) : undefined, {
       placement: "belowEditor",
     });
   }
@@ -355,6 +517,62 @@ export default function (pi: ExtensionAPI): void {
     return { systemPrompt: `${event.systemPrompt}\n\n${POTETO_DIRECTIVE}` };
   });
 
+  // Context guard: meter the context window while the mode is on, warn as it
+  // fills, and offer a one-key poteto compaction when it is nearly full.
+  pi.on("agent_end", async (_event, ctx) => {
+    if (!potetoMode) return;
+    renderModeUi(ctx);
+    const percent = ctx.getContextUsage()?.percent ?? null;
+    const level = guardLevel(percent);
+    if (level === "ok") {
+      guardNotified = "ok";
+      return;
+    }
+    if (!isStronger(level, guardNotified)) return;
+    guardNotified = level;
+    const advice = guardAdvice(level, percent);
+    if (level === "compact" && ctx.hasUI) {
+      const accepted = await ctx.ui.confirm("Context nearly full", `${advice}\n\nCompact now with the poteto summary?`);
+      if (accepted) ctx.compact({ customInstructions: POTETO_COMPACT_INSTRUCTIONS });
+      return;
+    }
+    ctx.ui.notify(advice, "warning");
+  });
+
+  pi.on("session_compact", (_event, ctx) => {
+    guardNotified = "ok";
+    renderModeUi(ctx);
+  });
+
+  // Poteto compaction: while the mode is on, own the summary shape. Any
+  // failure falls back to Pi's default compaction.
+  pi.on("session_before_compact", async (event, ctx) => {
+    if (!potetoMode) return;
+    if (conversationHelpers === undefined) {
+      conversationHelpers = (await loadConversationHelpers()) ?? "unavailable";
+    }
+    if (conversationHelpers === "unavailable") return;
+    const helpers = conversationHelpers;
+    const result = await runPotetoCompaction(
+      event.preparation,
+      event.customInstructions,
+      event.signal,
+      {
+        model: ctx.model,
+        complete: (model, context, options) =>
+          ctx.modelRegistry.complete(
+            model as Parameters<typeof ctx.modelRegistry.complete>[0],
+            context as Parameters<typeof ctx.modelRegistry.complete>[1],
+            options as Parameters<typeof ctx.modelRegistry.complete>[2],
+          ),
+        serialize: helpers.serialize,
+        notify: (message, level) => ctx.ui.notify(message, level ?? "warning"),
+      },
+    );
+    if (!result) return;
+    return { compaction: result };
+  });
+
   const setupCommand = {
     description: "Configure pstack subagent models for Pi via TUI pickers (fast paths: -l scope, inherit|light|custom tier, or one role). Writes only the subagents.* keys; default is all-inherit.",
     getArgumentCompletions: completions,
@@ -362,11 +580,16 @@ export default function (pi: ExtensionAPI): void {
   };
   pi.registerCommand("pstack-setup", setupCommand);
   pi.registerCommand("poteto-mode", {
-    description: "Enable or disable sticky Poteto Mode. Usage: /poteto-mode [task] | /poteto-mode off",
+    description: "Enable or disable sticky Poteto Mode. Usage: /poteto-mode [task or playbook] | /poteto-mode off",
     getArgumentCompletions: (prefix: string) => {
       const token = prefix.trim().toLowerCase();
-      if (!token || "off".startsWith(token)) return [{ value: "off", label: "off" }];
-      return null;
+      if (token.includes(" ")) return null;
+      if (!token) return [{ value: "off", label: "off" }, ...PLAYBOOK_COMPLETIONS.slice(0, 20)];
+      const items = [
+        ...("off".startsWith(token) ? [{ value: "off", label: "off" }] : []),
+        ...PLAYBOOK_COMPLETIONS.filter((item) => item.value.startsWith(token)),
+      ];
+      return items.length > 0 ? items : null;
     },
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const raw = args.trim();
@@ -386,6 +609,10 @@ export default function (pi: ExtensionAPI): void {
   pi.registerCommand("pstack-status", {
     description: "Show the effective pstack model map (resolved through defaults), the winning settings file, and loaded pstack skills.",
     handler: (_args, ctx) => pstackStatusHandler(pi, _args, ctx),
+  });
+  pi.registerCommand("pstack-doctor", {
+    description: "Check the pstack install: settings validity, package agents, vendored playbooks, companion tools, and the upstream pin.",
+    handler: (_args, ctx) => pstackDoctorHandler(pi, _args, ctx),
   });
   pi.registerCommand("bro", {
     description: "Restate the last assistant reply in plain human language, no jargon.",

@@ -20,7 +20,9 @@ Run:
 /pstack-setup
 ```
 
-[`/pstack-setup`](../../skills/setup-pstack/SKILL.md) reads the models your session can reach, asks where to save the map, and offers three tiers: all-inherit, light, or a per-role picker. Fast paths skip the questions, so `/pstack-setup -l` writes to the project, `/pstack-setup inherit` takes the cheapest tier, and `/pstack-setup scout` changes one role.
+[`/pstack-setup`](../../skills/setup-pstack/SKILL.md) reads the models your session can reach, asks where to save the map, asks for a reasoning budget, and offers three tiers: all-inherit, light, or a per-role picker. Fast paths skip the questions, so `/pstack-setup -l` writes to the project, `/pstack-setup inherit` takes the cheapest tier, `/pstack-setup small` sets a small reasoning budget, and `/pstack-setup scout` changes one role.
+
+The budget is Pi's own thinking ladder: `large` sets `xhigh` reasoning for every role that has no explicit level, `medium` sets `high`, `small` sets `medium`, and `unlimited` leaves each role at its own setting. It writes `subagents.defaultThinking`, so a role you configured individually keeps its level.
 
 It writes the `subagents.*` keys in Pi settings, which is the same place every other Pi tool reads model choices from:
 
@@ -39,7 +41,15 @@ Run:
 /pstack-status
 ```
 
-[`/pstack-status`](../../extensions/index.ts) prints the parent session model, the effective model for every role, the settings file that won, and how many pstack skills are loaded. It also reports the system-prompt cost of the skills Pi exposes to the model.
+[`/pstack-status`](../../extensions/index.ts) prints the parent session model, the effective model for every role, the recorded budget, the settings file that won, and how many pstack skills are loaded. It also reports the system-prompt cost of the skills Pi exposes to the model.
+
+Something look off? Run:
+
+```text
+/pstack-doctor
+```
+
+[`/pstack-doctor`](../../extensions/doctor.ts) checks both settings files for bad model slugs, thinking levels, and role typos that would silently do nothing, verifies the package agents' frontmatter, counts the vendored playbooks, names missing companion packages, and reports the upstream pin.
 
 ## Accept the verification offer, or don't
 
@@ -59,6 +69,6 @@ Pick something real but small, and describe it the way you'd describe it to a co
 
 Watch the todo list. The first item is always to read the Principles section. The rest are the matched playbook's steps copied in, the Feature playbook for this prompt. If `/poteto-mode` skips a step, the step stays in the list with `skip: <reason>`, so you can see what it chose not to do.
 
-From here you can type normal follow-ups. `/poteto-mode` is sticky. It stays on for the session, the choice persists across reloads, and the footer shows `pstack: poteto mode` while it is on. `/poteto-mode off` turns it back off.
+From here you can type normal follow-ups. `/poteto-mode` is sticky. It stays on for the session, the choice persists across reloads, and the footer shows `pstack: poteto mode` while it is on, with a live context meter in the HUD below the editor. `/poteto-mode off` turns it back off.
 
 Next: [Route work through `/poteto-mode`](./02-poteto-mode.md).

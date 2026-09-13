@@ -8,13 +8,22 @@ Every number below is reproducible. The commands are at the end.
 
 | Thing | Version | Ref |
 |---|---|---|
-| Upstream pstack | 0.15.2 | `f5bdd6826fd0a0d9cbc4347134c3a74a200b9d9d` |
-| This port | 0.1.0 | working tree |
+| Upstream pstack | 0.15.2 | `5bf2b1544db739998121a306340631963c2ff3de` |
+| This port | 0.2.0 | working tree |
 | `@zenspc/pi-pstack` | 0.6.0 | published 2026-09-09 |
 
 The version this port was vendored from before this change was upstream 0.14.4. That is an eight-release gap, and the reason it existed is worth stating because it is the problem the port now solves.
 
 The old `sync-upstream.mjs` wiped the vendored tree and asked a human to re-apply every Pi adaptation by hand. The adaptations were never written down, so each sync threw them away. Nobody wants to redo that work, so the port sat still. The fix was to record the adaptations as data instead of as tribal knowledge.
+
+## What upstream changed after the 0.15.2 pin
+
+Upstream added two commits after the ref this port was pinned to, without a version bump. Both are covered as of this release.
+
+| Upstream change | What this port did |
+|---|---|
+| bug-fix, perf-issue, and hillclimb code-delegate defaults moved to `grok-4.6-fast-xhigh` (#365) | Adopted by the sync lever and then erased by it. The `pi-model-defaults` rule rewrites every pinned slug to `inherit`, so the three playbooks came out byte-identical and needed no new rule. This is the port working as designed: upstream retunes its model panel, and Pi readers keep the parent-model default. |
+| `/setup-pstack` asks for a reasoning budget first: unlimited, large, medium, or small, mapped onto the effort ladder and recorded in the rule (#366) | Ported natively. `/pstack-setup` asks the same four budgets and writes Pi's own `subagents.defaultThinking` (`large` is `xhigh`, `medium` is `high`, `small` is `medium`, `unlimited` clears the key), so a role with an explicit level keeps it. The recorded budget reads back off the settings, not out of a private file. |
 
 ## What upstream changed between 0.14.4 and 0.15.2
 
@@ -40,10 +49,14 @@ One upstream change we deliberately did not take. Upstream 0.15.2 replaced the m
 |---|---|---|
 | Upstream content | 50 skills, current to 0.15.2 | 47 skills, current to the 0.15.x line |
 | Workflow skills the model sees | 5 of 50, because this port keeps upstream's `disable-model-invocation` flags | 4 of 47, because the port deletes those flags and strips the skills at runtime instead |
-| Setup | `/pstack-setup` interactive wizard. Scope picker, three tiers, per-role picker, and argument fast paths (`-l`, `inherit`, `light`, `custom`, a bare role name) | `/setup-pstack` writes a JSON file. No picker |
+| Setup | `/pstack-setup` interactive wizard. Budget picker, scope picker, three tiers, per-role picker, and argument fast paths (`-l`, `inherit`, `light`, `custom`, a budget word, a bare role name) | `/setup-pstack` writes a JSON file. No picker, no budget |
 | Where role models live | Pi's own `subagents.*` keys in `settings.json`, shared with the rest of Pi and hand-editable | A private `~/.pi/agent/pstack/models.json` that nothing else reads |
+| Reasoning budget | Four budgets written to `subagents.defaultThinking`, read back on re-runs, per-role levels win | None |
 | Status surface | `/pstack-status` prints the parent session model, the resolved model for every role, the settings file that won, the loaded skill inventory, and the system-prompt token cost of the model-visible skills | `/pstack status` reports whether pstack is on or off |
 | Sticky mode | Persisted as a session entry, survives a reload, shows a footer status, and shows a HUD line below the editor while on | A session entry and a footer status |
+| Context guard | Metered every turn while the mode is on: advice at 70 and 85 percent, one-key compaction at 92, live meter in the HUD | None |
+| Compaction | While the mode is on, compaction summaries are shaped around the playbook, decision ledger, and verification state, falling back to Pi's default on any failure | Pi's default compaction |
+| Install diagnostics | `/pstack-doctor` validates settings, flags unknown roles, checks agent frontmatter, counts playbooks, names missing companions, reports the pin | None |
 | Plain-language restate | `/bro` is a command | `bro` is a skill only |
 | Missing-dependency check | At startup, names each missing companion package, what it provides, and the install command | None |
 | Pi-only skills | `control-cli`, `control-ui`, `create-skill` have no counterpart in the other port | Absent |
@@ -51,9 +64,9 @@ One upstream change we deliberately did not take. Upstream 0.15.2 replaced the m
 | Prompt-cost transparency | Measured and printed by `/pstack-status` | Strips skills without reporting the number |
 | Skill visibility toggle | None. Follows upstream's static `disable-model-invocation` flags, which hide 45 of 50 skills | `/pstack on|off` toggles skill visibility at runtime |
 | Role model resolution | Recomputed from the settings chain on every status call, so `inherit` always shows what it currently means | Reads its own config file |
-| Tests | 18 committed tests over the extension logic and the sync rule engine | `check-plan` tests plus watch-pr tests |
+| Tests | 44 committed tests over the extension logic and the sync rule engine | `check-plan` tests plus watch-pr tests |
 
-We are behind in exactly one respect that matters to a stranger: release cadence. The other port has shipped six releases since 2026-08-22 and this one is at 0.1.0.
+We are behind in exactly one respect that matters to a stranger: release cadence. The other port has shipped six releases since 2026-08-22 and this one is at 0.2.0.
 
 ## The one place the other port does more, and what we did instead
 

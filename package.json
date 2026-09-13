@@ -1,7 +1,7 @@
 {
   "name": "@mccune1224/pi-pstack",
-  "version": "0.1.0",
-  "description": "pstack for Pi. Poteto's rigorous engineering workflow adapted from the pstack plugin into a Pi plugin: skills, subagents, and commands for write-less-higher-quality code with fearless parallelism.",
+  "version": "0.2.0",
+  "description": "pstack for Pi. Poteto's rigorous engineering workflow ported to the Pi Agent Harness: 50 skills and 2 agents, plus an extension that wires the mode into Pi settings, sessions, compaction, and the context window.",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -23,6 +23,8 @@
     "workflow",
     "principles",
     "subagents",
+    "context-guard",
+    "compaction",
     "unslop",
     "agent-style"
   ],

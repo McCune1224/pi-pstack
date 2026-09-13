@@ -1,6 +1,6 @@
 ---
 name: setup-pstack
-description: Configure which models pstack uses per role for Pi. Detects your available Pi models and writes the subagents.* keys in Pi settings. Manual fallback for the /pstack-setup command; use it when the extension picker is unavailable.
+description: Configure which models pstack uses per role and at what reasoning budget for Pi. Detects your available Pi models and writes the subagents.* keys in Pi settings. Manual fallback for the /pstack-setup command; use it when the extension picker is unavailable.
 ---
 
 # Setup pstack
@@ -34,7 +34,18 @@ Read the models the session can reach. `ctx.modelRegistry.getAvailable()` inside
 
 Read `~/.pi/agent/settings.json` and, when the project has one, `.pi/settings.json`. Extract `subagents.defaultModel`, `subagents.defaultThinking`, and `subagents.agentOverrides`. Treat anything absent as `inherit`.
 
-### 3. Map pstack roles onto Pi agents
+### 3. Ask for the reasoning budget
+
+Prefer a picker over free text. Offer these four options with these exact labels, and name the recorded budget when `subagents.defaultThinking` already holds one:
+
+- `unlimited, keep each role's own setting`
+- `large, xhigh reasoning`
+- `medium, high reasoning`
+- `small, medium reasoning`
+
+The labels map onto Pi's thinking ladder (`max` > `xhigh` > `high` > `medium` > `low`): `large` writes `subagents.defaultThinking: "xhigh"`, `medium` writes `"high"`, `small` writes `"medium"`, and `unlimited` clears the key so every role keeps its own setting. A role with an explicit `thinking` in `agentOverrides` keeps it; the budget is the default, not a forced rewrite. Record the chosen label when you report the result, and read it back as the current budget on a re-run.
+
+### 4. Map pstack roles onto Pi agents
 
 pstack names 17 roles. Pi has six agents, so several roles share one. Show the mapping, not 17 lines.
 
@@ -57,11 +68,11 @@ Then show every agent with its current model, marking any real slug that is not 
 
 A role whose value is a list upstream (the arena and architect panels, the interrogate reviewers) becomes repeated `subagent` calls here. The list length sets the fan-out, so keep it small.
 
-### 4. Validate
+### 5. Validate
 
 Every real slug you write must be in the detected set. `inherit` always passes. If a chosen slug is not available, stop and ask again.
 
-### 5. Write the settings
+### 6. Write the settings
 
 Merge into the target `settings.json` without disturbing other keys. Overwrite the `subagents.*` keys you own so re-runs stay idempotent. Shape:
 
@@ -84,10 +95,10 @@ Merge into the target `settings.json` without disturbing other keys. Overwrite t
 
 `inherit` is the right starting value. It runs every delegate on the parent model at no extra cost, and it is what the all-inherit tier writes.
 
-### 6. Confirm
+### 7. Confirm
 
 Tell the user which file changed and that it applies from the next turn. Pi re-reads settings per turn, so no reload is needed. `/pstack-status` shows the resolved map and which file won.
 
-### 7. Offer a verification skill (optional)
+### 8. Offer a verification skill (optional)
 
 Check whether the project has a way to drive the real app for proof, a `verify-*` skill or an existing harness. If not, offer once: "want a project-local verification skill, so agents can drive the app the way a user does and prove changes work? I can generate one with /create-verification-skill." On yes, invoke `/create-verification-skill`. On no, move on without pushing.

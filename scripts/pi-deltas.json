@@ -3,7 +3,7 @@
   "upstream": {
     "repo": "https://github.com/cursor/plugins",
     "path": "pstack",
-    "ref": "f5bdd6826fd0a0d9cbc4347134c3a74a200b9d9d",
+    "ref": "5bf2b1544db739998121a306340631963c2ff3de",
     "version": "0.15.2"
   },
   "note": "Rules apply in declaration order per file. Long, line-specific rules are declared before the uniform ones they would otherwise be consumed by. A rule that matches nothing fails the run, so upstream drift surfaces as a STALE RULE instead of a silent loss.",
@@ -589,14 +589,14 @@
       "kind": "override",
       "id": "override-setup-pstack-skill",
       "path": "skills/setup-pstack/SKILL.md",
-      "basedOn": "sha256:5acdc3db4f15f3e9b81fb56eab7f17cdccde1a11a40053ed7743f7467729c8a9",
+      "basedOn": "sha256:2399a5670c6408e92a996299c9de9f22736997cb7e835c694309e7c6fc8c39bf",
       "reason": "Upstream writes a Cursor always-applied rule. Pi writes the native subagents.* keys instead, so the headless path and the /pstack-setup picker share one source of truth."
     },
     {
       "kind": "override",
       "id": "override-guide-setup",
       "path": "docs/guide/01-setup.md",
-      "basedOn": "sha256:5530cdb0138b1abf9f2bbb3d54b1bb7447cfb4d8aa3db5444410257473607c39",
+      "basedOn": "sha256:0a928ce6ff6199104e57914692ce71bb4ec5c629dec2a54988ae97ea4f3c64ef",
       "reason": "Pi installs a package and reloads, where Cursor installs a plugin from a marketplace. The whole page is the install and setup walkthrough."
     },
     {
